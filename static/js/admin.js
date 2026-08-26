@@ -119,6 +119,7 @@ class AdminApp {
             const token = this.token || this.getStoredToken();
             if (token) {
                 this.token = token;
+                this.renderAdminProfile();
                 this.loadAdminProfile();
                 this.loadParticipants();
             } else {
@@ -156,20 +157,28 @@ class AdminApp {
         try {
             const res = await fetch("/api/admin/me", { headers: this.getAuthHeaders() });
             if (res.ok) {
-                const admin = await res.json();
-                const badge = document.getElementById("admin-user-badge");
-                const nameEl = document.getElementById("admin-user-name");
-                const roleEl = document.getElementById("admin-user-role");
-                if (badge && nameEl && roleEl) {
-                    nameEl.textContent = admin.full_name || admin.username;
-                    roleEl.textContent = admin.role || "Headmaster";
-                    badge.classList.remove("hidden");
-                }
+                this.adminData = await res.json();
+                this.renderAdminProfile();
             } else if (res.status === 401) {
                 this.handleLogout();
             }
         } catch (e) {
             console.error("Failed to load admin profile", e);
+        }
+    }
+
+    renderAdminProfile() {
+        if (!this.adminData) return;
+        const badge = document.getElementById("admin-user-badge");
+        const nameEl = document.getElementById("admin-user-name");
+        const roleEl = document.getElementById("admin-user-role");
+        if (badge && nameEl && roleEl) {
+            nameEl.textContent = this.adminData.full_name || this.adminData.username;
+            const rawRole = (this.adminData.role || "Headmaster").toLowerCase().replace(/[\s.-]+/g, "_");
+            const roleKey = `role_${rawRole}`;
+            const translatedRole = window.i18n.t(roleKey);
+            roleEl.textContent = (translatedRole !== roleKey ? translatedRole : (this.adminData.role || "Headmaster")).toUpperCase();
+            badge.classList.remove("hidden");
         }
     }
 
@@ -298,7 +307,7 @@ class AdminApp {
 
         if (list.length === 0) {
             const tr = document.createElement("tr");
-            tr.innerHTML = `<td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">No participants found matching current filters.</td>`;
+            tr.innerHTML = `<td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">${window.i18n.t('no_participants_found')}</td>`;
             tbody.appendChild(tr);
             return;
         }
@@ -310,7 +319,7 @@ class AdminApp {
 
             const houseHtml = p.house_code 
                 ? `<span class="house-tag ${p.house_code}">${crestIcons[p.house_code] || ''} ${p.house_name}</span>
-                   ${p.manual_override ? '<span class="manual-badge">Manual</span>' : ''}`
+                   ${p.manual_override ? `<span class="manual-badge">${window.i18n.t('badge_manual')}</span>` : ''}`
                 : `<span style="color: var(--text-muted);">${window.i18n.t('not_sorted_yet')} (${p.answered_questions}/6)</span>`;
 
             tr.innerHTML = `
@@ -386,7 +395,16 @@ class AdminApp {
     }
 
     async handleAutoBalance() {
-        if (!confirm(window.i18n.t("confirm_auto_balance"))) return;
+        const isDe = window.i18n.getLang() === "de";
+        const confirmed = await this.confirmDialog({
+            icon: "⚖️",
+            title: isDe ? "Häuser ausgleichen" : "Auto-Balance Houses",
+            message: window.i18n.t("confirm_auto_balance"),
+            confirmText: isDe ? "Ausgleichen" : "Balance Houses",
+            isDanger: false
+        });
+
+        if (!confirmed) return;
 
         try {
             const res = await fetch("/api/admin/auto-balance", {
@@ -396,19 +414,21 @@ class AdminApp {
 
             if (res.ok) {
                 await this.loadParticipants();
+                this.showToast(isDe ? "Teilnehmer wurden gleichmäßig verteilt!" : "Participants have been evenly balanced across all 4 houses!", "success");
             } else {
-                alert("Auto-balance failed.");
+                this.showToast(isDe ? "Ausgleich fehlgeschlagen." : "Auto-balance failed.", "error");
             }
         } catch (e) {
             console.error("Auto-balance error", e);
-            alert("Network error.");
+            this.showToast(isDe ? "Verbindungsfehler." : "Network connection error.", "error");
         }
     }
 
     async saveReassignment() {
+        const isDe = window.i18n.getLang() === "de";
         const selectedRadio = document.querySelector('input[name="reassign-house"]:checked');
         if (!selectedRadio) {
-            alert("Please choose a house.");
+            this.showToast(isDe ? "Bitte wähle ein Haus aus." : "Please choose a house.", "warning");
             return;
         }
 
@@ -423,16 +443,26 @@ class AdminApp {
             if (res.ok) {
                 this.hideModal("modal-reassign");
                 await this.loadParticipants();
+                this.showToast(isDe ? "Teilnehmer erfolgreich umgeteilt!" : "Participant successfully reassigned!", "success");
             } else {
-                alert("Reassignment failed.");
+                this.showToast(isDe ? "Umteilung fehlgeschlagen." : "Reassignment failed.", "error");
             }
         } catch (e) {
-            alert("Network error.");
+            this.showToast(isDe ? "Verbindungsfehler." : "Network connection error.", "error");
         }
     }
 
     async deleteParticipant(participantId) {
-        if (!confirm(window.i18n.t("confirm_delete"))) return;
+        const isDe = window.i18n.getLang() === "de";
+        const confirmed = await this.confirmDialog({
+            icon: "🗑️",
+            title: isDe ? "Teilnehmer löschen" : "Delete Participant",
+            message: window.i18n.t("confirm_delete"),
+            confirmText: isDe ? "Löschen" : "Delete",
+            isDanger: true
+        });
+
+        if (!confirmed) return;
 
         try {
             const res = await fetch(`/api/admin/participants/${participantId}`, {
@@ -442,16 +472,26 @@ class AdminApp {
 
             if (res.ok) {
                 await this.loadParticipants();
+                this.showToast(isDe ? "Teilnehmer gelöscht." : "Participant deleted.", "success");
             } else {
-                alert("Deletion failed.");
+                this.showToast(isDe ? "Löschen fehlgeschlagen." : "Deletion failed.", "error");
             }
         } catch (e) {
-            alert("Network error.");
+            this.showToast(isDe ? "Verbindungsfehler." : "Network connection error.", "error");
         }
     }
 
     async handleResetEvent() {
-        if (!confirm(window.i18n.t("confirm_reset"))) return;
+        const isDe = window.i18n.getLang() === "de";
+        const confirmed = await this.confirmDialog({
+            icon: "💥",
+            title: isDe ? "Feier zurücksetzen" : "Reset Sorting Event",
+            message: window.i18n.t("confirm_reset"),
+            confirmText: isDe ? "Alles zurücksetzen" : "Reset Everything",
+            isDanger: true
+        });
+
+        if (!confirmed) return;
 
         try {
             const res = await fetch("/api/admin/event/reset", {
@@ -460,14 +500,83 @@ class AdminApp {
             });
 
             if (res.ok) {
-                alert("Event has been reset.");
                 await this.loadParticipants();
+                this.showToast(isDe ? "Die Feier wurde zurückgesetzt." : "Event has been reset successfully. All assignments cleared.", "success");
             } else {
-                alert("Reset failed.");
+                this.showToast(isDe ? "Zurücksetzen fehlgeschlagen." : "Reset failed.", "error");
             }
         } catch (e) {
-            alert("Network error.");
+            this.showToast(isDe ? "Verbindungsfehler." : "Network connection error.", "error");
         }
+    }
+
+    confirmDialog({ icon = "⚠️", title = "Confirmation", message = "", confirmText = "Confirm", isDanger = false } = {}) {
+        return new Promise((resolve) => {
+            const iconEl = document.getElementById("confirm-modal-icon");
+            const titleEl = document.getElementById("confirm-modal-title");
+            const msgEl = document.getElementById("confirm-modal-msg");
+            const btnAccept = document.getElementById("btn-confirm-accept");
+            const btnCancel = document.getElementById("btn-confirm-cancel");
+
+            if (iconEl) iconEl.textContent = icon;
+            if (titleEl) titleEl.textContent = title;
+            if (msgEl) msgEl.textContent = message;
+            if (btnAccept) {
+                btnAccept.textContent = confirmText;
+                btnAccept.className = isDanger ? "btn-danger" : "btn-magical";
+            }
+
+            let cleanup = null;
+
+            const onAccept = () => {
+                cleanup();
+                this.hideModal("modal-confirm");
+                resolve(true);
+            };
+
+            const onCancel = () => {
+                cleanup();
+                this.hideModal("modal-confirm");
+                resolve(false);
+            };
+
+            cleanup = () => {
+                btnAccept.removeEventListener("click", onAccept);
+                btnCancel.removeEventListener("click", onCancel);
+            };
+
+            btnAccept.addEventListener("click", onAccept);
+            btnCancel.addEventListener("click", onCancel);
+
+            this.showModal("modal-confirm");
+        });
+    }
+
+    showToast(message, type = "info", duration = 3500) {
+        const container = document.getElementById("toast-container");
+        if (!container) return;
+
+        const toast = document.createElement("div");
+        toast.className = `toast ${type}`;
+        
+        const icons = {
+            success: "✨",
+            error: "❌",
+            warning: "⚠️",
+            info: "ℹ️"
+        };
+
+        toast.innerHTML = `
+            <span style="font-size: 1.2rem;">${icons[type] || '✨'}</span>
+            <span>${this.escapeHtml(message)}</span>
+        `;
+
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.add("fade-out");
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
     }
 
     handleExportCsv() {
@@ -528,7 +637,7 @@ class AdminApp {
                 this.updateQrCode(info.guest_url);
             }
         } catch (e) {
-            alert("Could not detect local IP automatically.");
+            this.showToast(window.i18n.getLang() === "de" ? "Lokale IP konnte nicht erkannt werden." : "Could not detect local IP automatically.", "warning");
         }
     }
 
@@ -621,7 +730,7 @@ class AdminApp {
                 this.showModal("modal-stats");
             }
         } catch (e) {
-            alert("Failed to load statistics.");
+            this.showToast(window.i18n.getLang() === "de" ? "Statistiken konnten nicht geladen werden." : "Failed to load statistics.", "error");
         }
     }
 

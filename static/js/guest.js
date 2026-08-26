@@ -298,12 +298,12 @@ class GuestApp {
                     this.renderResult(result);
                 }, 1600);
             } else {
-                const data = await res.json();
-                alert(data.detail || "Error during sorting.");
+                const data = await res.json().catch(() => ({}));
+                console.error("Sorting error", data);
                 this.showStep("step-questionnaire");
             }
         } catch (err) {
-            alert("Error connecting to server.");
+            console.error("Error connecting to server", err);
             this.showStep("step-questionnaire");
         }
     }

@@ -525,3 +525,247 @@ input:checked + .slider:before {
     background: rgba(0, 0, 0, 0.3);
     border-radius: 6px;
 }
+
+/* Custom Confirmation Modal */
+.confirm-modal-card {
+    text-align: center;
+    align-items: center;
+    border: 1px solid var(--gold-primary);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(245, 197, 24, 0.2);
+    animation: modalPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modalPop {
+    from {
+        opacity: 0;
+        transform: scale(0.92);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Toast Notifications */
+.toast-container {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #111424;
+    color: var(--text-primary);
+    padding: 14px 20px;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
+    border-left: 4px solid var(--gold-primary);
+    animation: toastSlideIn 0.3s ease-out forwards;
+    transition: all 0.3s ease;
+    max-width: 380px;
+}
+
+.toast.success {
+    border-left-color: #10b981;
+    background: #0f1f1a;
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.toast.error {
+    border-left-color: #ef4444;
+    background: #201315;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.toast.warning {
+    border-left-color: #f59e0b;
+    background: #231d10;
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.toast.info {
+    border-left-color: #3b82f6;
+    background: #101928;
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.toast.fade-out {
+    opacity: 0;
+    transform: translateX(30px);
+}
+
+@keyframes toastSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ==========================================================================
+   Responsive Breakpoints for Admin Panel
+   ========================================================================== */
+
+@media (max-width: 860px) {
+    .admin-header {
+        padding: 10px 14px;
+    }
+
+    .admin-header-content {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .header-actions {
+        justify-content: space-between;
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .admin-user-badge {
+        font-size: 0.8rem;
+        padding: 4px 10px;
+        flex-wrap: wrap;
+    }
+
+    .toolbar-card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .toolbar-left {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        width: 100%;
+    }
+
+    .toolbar-left button {
+        width: 100%;
+        font-size: 0.85rem;
+        padding: 8px 6px;
+        min-height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .toolbar-right {
+        width: 100%;
+    }
+
+    .toolbar-right button {
+        width: 100%;
+        min-height: 42px;
+        font-size: 0.88rem;
+    }
+
+    .roster-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .roster-filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        gap: 10px;
+    }
+
+    .house-filter-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        width: 100%;
+        gap: 4px;
+    }
+
+    .house-filter-btn {
+        flex: 1 1 calc(33% - 4px);
+        font-size: 0.78rem;
+        padding: 6px 4px;
+        min-height: 32px;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .search-input {
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 8px;
+    }
+
+    .roster-table {
+        min-width: 620px;
+    }
+
+    .toast-container {
+        top: 12px;
+        right: 12px;
+        left: 12px;
+    }
+
+    .toast {
+        max-width: 100%;
+        padding: 10px 14px;
+        font-size: 0.88rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .brand-title {
+        font-size: 1rem;
+    }
+
+    .admin-user-badge {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .toolbar-left {
+        grid-template-columns: 1fr;
+    }
+
+    .house-filter-btn {
+        flex: 1 1 calc(50% - 4px);
+    }
+
+    .modal-card {
+        padding: 20px 14px;
+    }
+
+    .reassign-options {
+        grid-template-columns: 1fr;
+    }
+}
+
+
