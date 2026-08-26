@@ -2,13 +2,27 @@
 
 class AdminApp {
     constructor() {
-        this.token = sessionStorage.getItem("admin_token") || null;
+        this.token = this.getStoredToken();
         this.participants = [];
         this.selectedParticipantId = null;
         this.currentHouseFilter = "ALL";
         this.currentSearchQuery = "";
 
         this.init();
+    }
+
+    getStoredToken() {
+        return localStorage.getItem("admin_token") 
+            || sessionStorage.getItem("admin_token") 
+            || this.getCookie("admin_auth_session") 
+            || null;
+    }
+
+    getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
     }
 
     init() {
@@ -59,6 +73,7 @@ class AdminApp {
 
         // Action Toolbar
         document.getElementById("btn-reset-event").addEventListener("click", () => this.handleResetEvent());
+        document.getElementById("btn-auto-balance").addEventListener("click", () => this.handleAutoBalance());
         document.getElementById("btn-export-csv").addEventListener("click", () => this.handleExportCsv());
         document.getElementById("btn-show-qr").addEventListener("click", () => this.handleShowQr());
         document.getElementById("btn-closing-stats").addEventListener("click", () => this.handleShowStats());
@@ -87,8 +102,16 @@ class AdminApp {
 
         // Language change event
         window.addEventListener("langchange", () => {
-            if (this.token) {
+            const token = this.token || this.getStoredToken();
+            if (token) {
+                this.token = token;
+                this.loadAdminProfile();
                 this.loadParticipants();
+            } else {
+                const errEl = document.getElementById("login-error");
+                if (errEl && !errEl.classList.contains("hidden") && errEl.getAttribute("data-err-key")) {
+                    errEl.textContent = window.i18n.t(errEl.getAttribute("data-err-key"));
+                }
             }
         });
     }
@@ -112,6 +135,10 @@ class AdminApp {
     }
 
     async loadAdminProfile() {
+        const token = this.token || this.getStoredToken();
+        if (!token) return;
+        this.token = token;
+
         try {
             const res = await fetch("/api/admin/me", { headers: this.getAuthHeaders() });
             if (res.ok) {
@@ -138,6 +165,7 @@ class AdminApp {
         const pwd = document.getElementById("admin-password").value;
         const errEl = document.getElementById("login-error");
         errEl.classList.add("hidden");
+        errEl.removeAttribute("data-err-key");
 
         try {
             const res = await fetch("/api/admin/login", {
@@ -149,15 +177,18 @@ class AdminApp {
             if (res.ok) {
                 const data = await res.json();
                 this.token = data.token;
+                localStorage.setItem("admin_token", data.token);
                 sessionStorage.setItem("admin_token", data.token);
+                errEl.classList.add("hidden");
                 await this.showDashboard();
             } else {
-                const errData = await res.json().catch(() => ({}));
-                errEl.textContent = errData.detail || "Invalid username or secret spell. Access denied.";
+                errEl.setAttribute("data-err-key", "err_invalid_credentials");
+                errEl.textContent = window.i18n.t("err_invalid_credentials");
                 errEl.classList.remove("hidden");
             }
         } catch (e) {
-            errEl.textContent = "Connection error.";
+            errEl.setAttribute("data-err-key", "err_connection");
+            errEl.textContent = window.i18n.t("err_connection");
             errEl.classList.remove("hidden");
         }
     }
@@ -170,14 +201,17 @@ class AdminApp {
             });
         } catch (e) {}
         this.token = null;
+        localStorage.removeItem("admin_token");
         sessionStorage.removeItem("admin_token");
+        document.cookie = "admin_auth_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
         this.showLogin();
     }
 
     getAuthHeaders() {
+        const token = this.token || this.getStoredToken() || "";
         return {
             "Content-Type": "application/json",
-            "X-Admin-Token": this.token || ""
+            "X-Admin-Token": token
         };
     }
 
@@ -206,6 +240,10 @@ class AdminApp {
     }
 
     async loadParticipants() {
+        const token = this.token || this.getStoredToken();
+        if (!token) return;
+        this.token = token;
+
         try {
             const lang = window.i18n.getLang();
             const res = await fetch(`/api/admin/participants?lang=${lang}`, { headers: this.getAuthHeaders() });
@@ -267,13 +305,36 @@ class AdminApp {
                 <td><span style="text-transform:uppercase; font-size:0.8rem; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">${p.preferred_lang || 'en'}</span></td>
                 <td>${houseHtml}</td>
                 <td>${p.total_score !== null && p.total_score !== undefined ? p.total_score + ' pts' : '—'}</td>
-                <td>${p.assigned_at ? new Date(p.assigned_at).toLocaleTimeString() : '—'}</td>
+                <td>${p.assigned_at ? this.formatDateTime(p.assigned_at) : '—'}</td>
                 <td class="actions-cell">
                     <button type="button" class="btn-outline small-btn" onclick="window.adminApp.openReassignModal(${p.id}, '${this.escapeHtml(p.display_name)}')">${window.i18n.t('btn_reassign')}</button>
                     <button type="button" class="btn-danger small-btn" onclick="window.adminApp.deleteParticipant(${p.id})">${window.i18n.t('btn_delete')}</button>
                 </td>
             `;
             tbody.appendChild(tr);
+        });
+    }
+
+    formatDateTime(dateStr) {
+        if (!dateStr) return "—";
+        let normalized = dateStr.replace(" ", "T");
+        if (!normalized.endsWith("Z") && !normalized.includes("+")) {
+            normalized += "Z";
+        }
+        let d = new Date(normalized);
+        if (isNaN(d.getTime())) {
+            d = new Date(dateStr);
+        }
+        if (isNaN(d.getTime())) return dateStr;
+
+        const lang = window.i18n.getLang() === "de" ? "de-DE" : "en-US";
+        return d.toLocaleString(lang, {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
         });
     }
 
@@ -285,7 +346,49 @@ class AdminApp {
     openReassignModal(participantId, name) {
         this.selectedParticipantId = participantId;
         document.getElementById("modal-reassign-participant").textContent = `Participant: ${name}`;
+
+        // Compute current house occupancies
+        const counts = { "GRY": 0, "RAV": 0, "HUF": 0, "SLY": 0 };
+        this.participants.forEach(p => {
+            if (p.house_code && counts[p.house_code] !== undefined) {
+                counts[p.house_code]++;
+            }
+        });
+
+        const setLabel = (code, count) => {
+            const el = document.getElementById(`reassign-count-${code}`);
+            if (el) {
+                el.textContent = `(${count})`;
+                el.style.color = count >= 3 ? "#fca5a5" : "#a7f3d0";
+            }
+        };
+
+        setLabel("GRY", counts.GRY);
+        setLabel("RAV", counts.RAV);
+        setLabel("HUF", counts.HUF);
+        setLabel("SLY", counts.SLY);
+
         this.showModal("modal-reassign");
+    }
+
+    async handleAutoBalance() {
+        if (!confirm(window.i18n.t("confirm_auto_balance"))) return;
+
+        try {
+            const res = await fetch("/api/admin/auto-balance", {
+                method: "POST",
+                headers: this.getAuthHeaders()
+            });
+
+            if (res.ok) {
+                await this.loadParticipants();
+            } else {
+                alert("Auto-balance failed.");
+            }
+        } catch (e) {
+            console.error("Auto-balance error", e);
+            alert("Network error.");
+        }
     }
 
     async saveReassignment() {

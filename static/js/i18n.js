@@ -56,6 +56,8 @@ const translations = {
         stat_balancing_mode: "House Balancing Mode",
         stat_balancing_desc: "Penalizes saturated houses to keep house sizes even (FR-18)",
         btn_reset_event: "Reset Event",
+        btn_auto_balance: "Auto-Balance Houses",
+        confirm_auto_balance: "Do you want to automatically redistribute participants evenly across all 4 houses based on their quiz preferences?",
         btn_export_csv: "Export CSV",
         btn_show_qr: "Display QR Code",
         btn_closing_stats: "Closing Statistics",
@@ -80,7 +82,9 @@ const translations = {
         reassign_modal_title: "Manually Reassign House",
         btn_save: "Save",
         btn_cancel: "Cancel",
-        scan_to_join: "Scan to Join the Sorting Ceremony"
+        scan_to_join: "Scan to Join the Sorting Ceremony",
+        err_invalid_credentials: "Invalid username or secret spell (password).",
+        err_connection: "Connection error. Please check your network."
     },
     de: {
         // App / Brand
@@ -138,6 +142,8 @@ const translations = {
         stat_balancing_mode: "Haus-Ausgleichsmodus",
         stat_balancing_desc: "Verhindert ein extremes Ungleichgewicht zwischen den Häusern (FR-18)",
         btn_reset_event: "Feier zurücksetzen",
+        btn_auto_balance: "Häuser ausgleichen",
+        confirm_auto_balance: "Möchtest du die Teilnehmer automatisch gleichmäßig auf alle 4 Häuser verteilen?",
         btn_export_csv: "CSV exportieren",
         btn_show_qr: "QR-Code anzeigen",
         btn_closing_stats: "Abschluss-Statistiken",
@@ -162,7 +168,9 @@ const translations = {
         reassign_modal_title: "Haus manuell zuweisen",
         btn_save: "Speichern",
         btn_cancel: "Abbrechen",
-        scan_to_join: "Scannen, um an der Zeremonie teilzunehmen"
+        scan_to_join: "Scannen, um an der Zeremonie teilzunehmen",
+        err_invalid_credentials: "Ungültiger Benutzername oder Geheimzauber (Passwort).",
+        err_connection: "Verbindungsfehler. Bitte überprüfe deine Verbindung."
     }
 };
 

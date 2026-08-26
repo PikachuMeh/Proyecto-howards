@@ -248,6 +248,71 @@ async def reset_event():
     await sse_manager.broadcast_reset()
     return {"status": "success", "message": "Event reset successfully. All assignments cleared."}
 
+@router.post("/auto-balance", dependencies=[Depends(verify_admin)])
+async def auto_balance_houses():
+    """
+    Evenly redistributes sorted participants across all 4 houses (FR-18).
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, code, name_en, name_de FROM house ORDER BY id ASC")
+        houses = [dict(h) for h in cursor.fetchall()]
+        if not houses:
+            raise HTTPException(status_code=400, detail="No houses found.")
+
+        cursor.execute("""
+            SELECT a.id, a.participant_id, a.house_id, a.score_breakdown, p.display_name
+            FROM assignment a
+            JOIN participant p ON p.id = a.participant_id
+            ORDER BY a.id ASC
+        """)
+        assignments = [dict(r) for r in cursor.fetchall()]
+        if not assignments:
+            return {"status": "success", "message": "No assignments to balance."}
+
+        house_codes = [h["code"] for h in houses]
+        house_id_by_code = {h["code"]: h["id"] for h in houses}
+        house_assigned_count = {code: 0 for code in house_codes}
+
+        for item in assignments:
+            breakdown = {}
+            if item["score_breakdown"]:
+                try:
+                    breakdown = json.loads(item["score_breakdown"])
+                except Exception:
+                    breakdown = {}
+
+            # Sort candidate houses by participant's score descending, then least populated
+            sorted_candidates = sorted(
+                house_codes,
+                key=lambda code: (
+                    -breakdown.get(code, 0),
+                    house_assigned_count[code]
+                )
+            )
+
+            # Pick candidate with lowest occupancy
+            min_occupancy = min(house_assigned_count.values())
+            min_candidates = [c for c in sorted_candidates if house_assigned_count[c] == min_occupancy]
+            chosen_code = min_candidates[0] if min_candidates else sorted_candidates[0]
+
+            house_assigned_count[chosen_code] += 1
+            new_house_id = house_id_by_code[chosen_code]
+
+            cursor.execute("""
+                UPDATE assignment
+                SET house_id = ?, manual_override = 1, assigned_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (new_house_id, item["id"]))
+
+    # Broadcast reset to synchronize all connected public screens immediately
+    await sse_manager.broadcast_reset()
+    return {
+        "status": "success",
+        "message": "Houses have been automatically balanced.",
+        "distribution": house_assigned_count
+    }
+
 @router.get("/export/csv", dependencies=[Depends(verify_admin)])
 def export_csv():
     with get_db() as conn:

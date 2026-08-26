@@ -199,3 +199,33 @@ def test_html_page_rendering(client):
         assert res.status_code == 200
         assert "html" in res.headers.get("content-type", "").lower()
 
+def test_auto_balance_houses(client):
+    """Test auto-balance endpoint evenly distributes students across houses."""
+    login_resp = client.post("/api/admin/login", json={"username": "admin", "password": "alohomora"})
+    admin_headers = {"X-Admin-Token": login_resp.json()["token"]}
+
+    # Reset
+    client.post("/api/admin/event/reset", headers=admin_headers)
+
+    # Register 4 participants
+    for name in ["Student A", "Student B", "Student C", "Student D"]:
+        p_res = client.post("/api/participants", json={"display_name": name})
+        p_id = p_res.json()["id"]
+        # Reassign all initially to Slytherin (house_id = 4)
+        client.patch(f"/api/admin/assignments/{p_id}", json={"house_id": 4}, headers=admin_headers)
+
+    # All 4 in Slytherin
+    houses_before = client.get("/api/houses").json()
+    sly_before = next(h for h in houses_before if h["code"] == "SLY")
+    assert sly_before["total"] == 4
+
+    # Run auto-balance
+    bal_res = client.post("/api/admin/auto-balance", headers=admin_headers)
+    assert bal_res.status_code == 200
+
+    # Verify each of the 4 houses now has exactly 1 student
+    houses_after = client.get("/api/houses").json()
+    for h in houses_after:
+        assert h["total"] == 1
+
+

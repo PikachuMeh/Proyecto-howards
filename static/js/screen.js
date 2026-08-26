@@ -88,6 +88,8 @@ class PublicScreen {
             (house.participants || []).forEach(p => {
                 const li = document.createElement("li");
                 li.className = "student-pill";
+                li.setAttribute("data-participant-id", p.id);
+                li.setAttribute("data-name", (p.display_name || "").trim().toLowerCase());
                 li.innerHTML = `<span>✨</span> <span>${this.escapeHtml(p.display_name)}</span>`;
                 listEl.appendChild(li);
             });
@@ -270,6 +272,30 @@ class PublicScreen {
     }
 
     addParticipantToColumn(data) {
+        const targetPid = String(data.participant_id);
+        const targetName = (data.display_name || "").trim().toLowerCase();
+
+        // 1. Remove participant from ANY house list where they currently exist
+        document.querySelectorAll(".students-list").forEach(list => {
+            list.querySelectorAll("li.student-pill").forEach(li => {
+                const pid = li.getAttribute("data-participant-id");
+                const name = li.getAttribute("data-name") || li.querySelector("span:last-child")?.textContent?.trim().toLowerCase();
+                if ((pid && pid === targetPid) || (name && name === targetName)) {
+                    li.remove();
+                    // Decrement old house counter
+                    const oldZone = list.closest(".house-zone");
+                    if (oldZone) {
+                        const oldCounter = oldZone.querySelector(".house-counter");
+                        if (oldCounter) {
+                            let count = Math.max(0, (parseInt(oldCounter.textContent, 10) || 1) - 1);
+                            oldCounter.textContent = count;
+                        }
+                    }
+                }
+            });
+        });
+
+        // 2. Increment target house counter
         const counterEl = document.getElementById(`counter-${data.house_code}`);
         if (counterEl) {
             let count = parseInt(counterEl.textContent, 10) || 0;
@@ -279,10 +305,13 @@ class PublicScreen {
             setTimeout(() => counterEl.classList.remove("bump"), 500);
         }
 
+        // 3. Add to target house list
         const listEl = document.getElementById(`list-${data.house_code}`);
         if (listEl) {
             const li = document.createElement("li");
             li.className = "student-pill recent";
+            li.setAttribute("data-participant-id", data.participant_id);
+            li.setAttribute("data-name", targetName);
             li.innerHTML = `<span>✨</span> <span>${this.escapeHtml(data.display_name)}</span>`;
             listEl.appendChild(li);
             listEl.scrollTop = listEl.scrollHeight;
@@ -292,6 +321,11 @@ class PublicScreen {
                 li.classList.remove("recent");
             }, 6000);
         }
+
+        // 4. Background synchronization with backend DB
+        setTimeout(() => {
+            this.loadInitialHouses();
+        }, 1000);
     }
 
     sleep(ms) {
