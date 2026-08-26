@@ -327,8 +327,20 @@ class GuestApp {
         const motto = document.getElementById("result-house-motto");
         const crest = document.getElementById("house-crest-icon");
 
+        const houseTheme = {
+            "GRY": { text: "#fca5a5", glow: "rgba(239, 68, 68, 0.7)", border: "#ef4444", bg: "rgba(116, 0, 1, 0.35)", bar: "#ef4444" },
+            "RAV": { text: "#93c5fd", glow: "rgba(59, 130, 246, 0.7)", border: "#3b82f6", bg: "rgba(14, 26, 64, 0.5)", bar: "#3b82f6" },
+            "HUF": { text: "#fde047", glow: "rgba(234, 179, 8, 0.7)", border: "#eab308", bg: "rgba(236, 185, 57, 0.3)", bar: "#eab308" },
+            "SLY": { text: "#86efac", glow: "rgba(34, 197, 94, 0.7)", border: "#22c55e", bg: "rgba(26, 71, 42, 0.4)", bar: "#22c55e" }
+        };
+
+        const theme = houseTheme[assignment.house_code] || {
+            text: "#f5c518", glow: "rgba(245, 197, 24, 0.6)", border: "#d3a625", bg: "rgba(22, 27, 46, 0.95)", bar: "#f5c518"
+        };
+
         title.textContent = assignment.house_name;
-        title.style.color = assignment.color_hex;
+        title.style.color = theme.text;
+        title.style.textShadow = `0 0 25px ${theme.glow}, 0 2px 6px rgba(0,0,0,0.9)`;
         motto.textContent = `"${assignment.motto}"`;
         
         // Crest icon mapping
@@ -340,9 +352,10 @@ class GuestApp {
         };
         crest.textContent = icons[assignment.house_code] || "✨";
 
-        // House color aura
-        card.style.borderColor = assignment.color_hex;
-        card.style.boxShadow = `0 0 35px ${assignment.color_hex}66`;
+        // House color aura & background
+        card.style.borderColor = theme.border;
+        card.style.boxShadow = `0 0 35px ${theme.glow}`;
+        card.style.background = `linear-gradient(180deg, ${theme.bg} 0%, rgba(11, 14, 26, 0.95) 100%)`;
 
         // Render score breakdown
         const breakdownContainer = document.getElementById("score-breakdown-container");
@@ -353,12 +366,6 @@ class GuestApp {
             "HUF": "Hufflepuff",
             "SLY": "Slytherin"
         };
-        const houseColors = {
-            "GRY": "#740001",
-            "RAV": "#0E1A40",
-            "HUF": "#ECB939",
-            "SLY": "#1A472A"
-        };
 
         const scores = assignment.score_breakdown || {};
         const maxScore = Math.max(...Object.values(scores), 1);
@@ -367,13 +374,14 @@ class GuestApp {
             const pct = Math.round((score / maxScore) * 100);
             const row = document.createElement("div");
             row.className = "breakdown-bar-row";
+            const barColor = houseTheme[code] ? houseTheme[code].bar : "#f5c518";
             row.innerHTML = `
                 <div class="breakdown-label-row">
-                    <span>${houseNames[code] || code}</span>
-                    <span>${score} pts</span>
+                    <span>${icons[code] || ''} ${houseNames[code] || code}</span>
+                    <span>${score} pts (${pct}%)</span>
                 </div>
                 <div class="breakdown-track">
-                    <div class="breakdown-fill" style="width: ${pct}%; background-color: ${houseColors[code] || '#d3a625'};"></div>
+                    <div class="breakdown-fill" style="width: ${pct}%; background-color: ${barColor};"></div>
                 </div>
             `;
             breakdownContainer.appendChild(row);

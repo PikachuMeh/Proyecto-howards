@@ -1,0 +1,14 @@
+services:
+  sorting-hat:
+    build: .
+    container_name: sorting_hat_app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - ADMIN_PASSWORD=alohomora
+      - SECRET_KEY=gryffindor-ravenclaw-hufflepuff-slytherin-magic-key-2026

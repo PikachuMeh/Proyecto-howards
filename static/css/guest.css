@@ -356,10 +356,11 @@
 
 .result-house-title {
     font-family: var(--font-heading);
-    font-size: 2.4rem;
-    letter-spacing: 2px;
-    margin: 8px 0 16px;
-    text-shadow: 0 0 20px currentColor;
+    font-size: clamp(2rem, 6vw, 2.8rem);
+    font-weight: 700;
+    letter-spacing: 3px;
+    margin: 10px 0 16px;
+    text-transform: uppercase;
 }
 
 .motto-box {

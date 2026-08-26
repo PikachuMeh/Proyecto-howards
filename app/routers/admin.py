@@ -147,21 +147,22 @@ def update_settings(data: AdminEventSettings):
 @router.get("/participants", dependencies=[Depends(verify_admin)])
 def list_participants(lang: str = "en"):
     lang = "de" if lang.lower() == "de" else "en"
-    name_col = "name_de" if lang == "de" else "name_en"
 
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute(f"""
+        cursor.execute("""
             SELECT p.id, p.display_name, p.preferred_lang, p.created_at,
                    a.id as assignment_id, a.house_id, a.total_score, a.score_breakdown,
                    a.manual_override, a.assigned_at,
-                   h.code as house_code, h.{name_col} as house_name, h.color_hex,
+                   h.code as house_code,
+                   CASE WHEN ? = 'de' THEN h.name_de ELSE h.name_en END as house_name,
+                   h.color_hex,
                    (SELECT COUNT(*) FROM answer an WHERE an.participant_id = p.id) as answered_questions
             FROM participant p
             LEFT JOIN assignment a ON a.participant_id = p.id
             LEFT JOIN house h ON h.id = a.house_id
             ORDER BY p.id DESC
-        """)
+        """, (lang,))
         rows = [dict(r) for r in cursor.fetchall()]
         for r in rows:
             if r["score_breakdown"]:

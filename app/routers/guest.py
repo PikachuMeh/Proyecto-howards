@@ -117,7 +117,6 @@ def get_me(participant: Dict[str, Any] = Depends(get_current_participant)):
 @router.get("/questions", response_model=List[QuestionOut])
 def get_questions(lang: str = "en"):
     lang = "de" if lang.lower() == "de" else "en"
-    text_col = "text_de" if lang == "de" else "text_en"
 
     with get_db() as conn:
         cursor = conn.cursor()
@@ -126,21 +125,25 @@ def get_questions(lang: str = "en"):
         if not event:
             return []
 
-        cursor.execute(f"""
-            SELECT id, {text_col} as text, position
+        cursor.execute("""
+            SELECT id,
+                   CASE WHEN ? = 'de' THEN text_de ELSE text_en END as text,
+                   position
             FROM question
             WHERE event_id = ?
             ORDER BY position ASC
-        """, (event["id"],))
+        """, (lang, event["id"]))
         questions = [dict(q) for q in cursor.fetchall()]
 
         for q in questions:
-            cursor.execute(f"""
-                SELECT id, {text_col} as text, position
+            cursor.execute("""
+                SELECT id,
+                       CASE WHEN ? = 'de' THEN text_de ELSE text_en END as text,
+                       position
                 FROM option
                 WHERE question_id = ?
                 ORDER BY position ASC
-            """, (q["id"],))
+            """, (lang, q["id"]))
             q["options"] = [dict(opt) for opt in cursor.fetchall()]
 
     return questions
