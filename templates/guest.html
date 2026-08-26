@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n="app_title">Hogwarts Sorting Hat</title>
+    <link rel="stylesheet" href="/static/css/common.css">
+    <link rel="stylesheet" href="/static/css/guest.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-content">
+            <div class="logo-area">
+                <span class="hat-icon">🧙‍♂️</span>
+                <span class="event-title" data-i18n="hogwarts_party">Hogwarts Christmas Party</span>
+            </div>
+            <div class="lang-switch">
+                <button type="button" class="lang-btn active" data-lang="en">EN</button>
+                <button type="button" class="lang-btn" data-lang="de">DE</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="guest-container">
+        <!-- 1. Welcome / Name Entry Step -->
+        <section id="step-register" class="guest-step active">
+            <div class="card registration-card">
+                <div class="hat-avatar-container">
+                    <div class="hat-avatar">🎩</div>
+                </div>
+                <h1 class="gold-title main-title" data-i18n="app_title">Hogwarts Sorting Hat</h1>
+                <p class="subtitle" data-i18n="subtitle_guest">Discover which house you truly belong to</p>
+                
+                <form id="form-register" class="reg-form" onsubmit="return false;">
+                    <div class="form-group">
+                        <label for="display-name" data-i18n="enter_name_label">What is your wizarding or witch name?</label>
+                        <input type="text" id="display-name" name="display_name" required minlength="2" maxlength="40" 
+                               placeholder="e.g., Albus Dumbledore" data-i18n-placeholder="name_placeholder" autocomplete="name">
+                        <span class="input-hint" data-i18n="name_hint">Between 2 and 40 characters. No account needed!</span>
+                    </div>
+                    <div id="register-error" class="error-banner hidden"></div>
+                    <button type="submit" id="btn-start" class="btn-magical full-width" data-i18n="start_button">Begin Sorting Ceremony</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- 2. Questionnaire Step -->
+        <section id="step-questionnaire" class="guest-step">
+            <div class="card quiz-card">
+                <div class="quiz-header">
+                    <span id="question-progress-text" class="progress-text">Question 1 of 6</span>
+                    <div class="progress-bar-bg">
+                        <div id="progress-bar-fill" class="progress-bar-fill" style="width: 16.6%;"></div>
+                    </div>
+                </div>
+
+                <div class="question-container">
+                    <h2 id="question-title" class="question-title">Loading question...</h2>
+                    <div id="options-list" class="options-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <div id="quiz-error" class="error-banner hidden"></div>
+
+                <div class="quiz-footer">
+                    <button type="button" id="btn-prev" class="btn-outline" data-i18n="btn_prev">← Previous</button>
+                    <button type="button" id="btn-next" class="btn-magical" data-i18n="btn_next">Next →</button>
+                    <button type="button" id="btn-submit-sorting" class="btn-magical hidden" data-i18n="btn_decide">✨ Let the Hat decide! ✨</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. Sorting Animation / Suspense Step -->
+        <section id="step-deliberation" class="guest-step">
+            <div class="card deliberation-card">
+                <div class="hat-thinking-anim">
+                    <span class="huge-hat">🎩</span>
+                    <div class="magic-sparkles">✨</div>
+                </div>
+                <h2 class="gold-title" data-i18n="sorting_in_progress">The Sorting Hat is deliberating...</h2>
+                <p id="sorting-quote" class="deliberation-quote" data-i18n="sorting_hint">
+                    "Hmm... difficult. Very difficult. Plenty of courage, I see. Not a bad mind either..."
+                </p>
+                <div class="deliberation-spinner"></div>
+            </div>
+        </section>
+
+        <!-- 4. Result Step -->
+        <section id="step-result" class="guest-step">
+            <div id="result-card" class="card result-card">
+                <div class="house-badge-container">
+                    <div id="house-crest-icon" class="house-crest-icon">🦁</div>
+                </div>
+                <p class="result-intro" data-i18n="you_belong_to">You have been sorted into...</p>
+                <h1 id="result-house-name" class="result-house-title">GRYFFINDOR</h1>
+                
+                <div class="motto-box">
+                    <h4 data-i18n="motto_title">House Motto</h4>
+                    <p id="result-house-motto" class="motto-text">"Where dwell the brave at heart..."</p>
+                </div>
+
+                <div class="breakdown-section">
+                    <button type="button" id="btn-toggle-breakdown" class="btn-outline small-btn">
+                        <span data-i18n="score_breakdown">Score Breakdown</span> ▾
+                    </button>
+                    <div id="score-breakdown-container" class="score-breakdown-box hidden">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <div class="result-footer">
+                    <a href="/screen" target="_blank" class="btn-outline" data-i18n="btn_view_screen">View Public Projection Screen</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <p>Hogwarts Sorting Ceremony &bull; Christmas Special</p>
+    </footer>
+
+    <script src="/static/js/i18n.js"></script>
+    <script src="/static/js/guest.js"></script>
+</body>
+</html>

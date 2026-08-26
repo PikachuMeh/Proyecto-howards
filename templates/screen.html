@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="screen_title">Hogwarts Sorting Ceremony</title>
+    <link rel="stylesheet" href="/static/css/common.css">
+    <link rel="stylesheet" href="/static/css/screen.css">
+</head>
+<body class="screen-body">
+    <!-- Top Header Bar for Projector -->
+    <header class="screen-header">
+        <div class="screen-title-box">
+            <span class="ceremony-hat">🧙‍♂️</span>
+            <h1 class="gold-title main-screen-title" data-i18n="screen_title">Hogwarts Sorting Ceremony</h1>
+        </div>
+        <div class="header-right">
+            <div id="connection-status" class="status-indicator">
+                <span class="status-dot"></span>
+                <span id="status-text" data-i18n="connected">Live</span>
+            </div>
+            <div class="lang-switch">
+                <button type="button" class="lang-btn active" data-lang="en">EN</button>
+                <button type="button" class="lang-btn" data-lang="de">DE</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Center Stage for Sorting Animation -->
+    <div id="center-stage" class="center-stage hidden">
+        <div class="center-stage-backdrop"></div>
+        <div class="center-content">
+            <div id="center-hat-anim" class="center-hat">🎩</div>
+            <p id="hesitant-banner" class="hesitant-banner hidden" data-i18n="hesitant_text">
+                "Hmm... a difficult choice between two great houses..."
+            </p>
+            <div id="flying-name" class="flying-name">Harry Potter</div>
+            <div id="flying-destination" class="flying-destination">GRYFFINDOR!</div>
+        </div>
+    </div>
+
+    <!-- 4 House Zones Grid -->
+    <main class="houses-grid">
+        <!-- Gryffindor Zone -->
+        <section id="house-zone-GRY" class="house-zone zone-gry">
+            <div class="house-zone-header">
+                <div class="crest-circle">🦁</div>
+                <div class="house-zone-meta">
+                    <h2 class="house-name" data-house="GRY">Gryffindor</h2>
+                    <span id="counter-GRY" class="house-counter">0</span>
+                </div>
+            </div>
+            <div class="house-students-container">
+                <ul id="list-GRY" class="students-list">
+                    <!-- Populated by JS -->
+                </ul>
+            </div>
+        </section>
+
+        <!-- Ravenclaw Zone -->
+        <section id="house-zone-RAV" class="house-zone zone-rav">
+            <div class="house-zone-header">
+                <div class="crest-circle">🦅</div>
+                <div class="house-zone-meta">
+                    <h2 class="house-name" data-house="RAV">Ravenclaw</h2>
+                    <span id="counter-RAV" class="house-counter">0</span>
+                </div>
+            </div>
+            <div class="house-students-container">
+                <ul id="list-RAV" class="students-list">
+                    <!-- Populated by JS -->
+                </ul>
+            </div>
+        </section>
+
+        <!-- Hufflepuff Zone -->
+        <section id="house-zone-HUF" class="house-zone zone-huf">
+            <div class="house-zone-header">
+                <div class="crest-circle">🦡</div>
+                <div class="house-zone-meta">
+                    <h2 class="house-name" data-house="HUF">Hufflepuff</h2>
+                    <span id="counter-HUF" class="house-counter">0</span>
+                </div>
+            </div>
+            <div class="house-students-container">
+                <ul id="list-HUF" class="students-list">
+                    <!-- Populated by JS -->
+                </ul>
+            </div>
+        </section>
+
+        <!-- Slytherin Zone -->
+        <section id="house-zone-SLY" class="house-zone zone-sly">
+            <div class="house-zone-header">
+                <div class="crest-circle">🐍</div>
+                <div class="house-zone-meta">
+                    <h2 class="house-name" data-house="SLY">Slytherin</h2>
+                    <span id="counter-SLY" class="house-counter">0</span>
+                </div>
+            </div>
+            <div class="house-students-container">
+                <ul id="list-SLY" class="students-list">
+                    <!-- Populated by JS -->
+                </ul>
+            </div>
+        </section>
+    </main>
+
+    <script src="/static/js/i18n.js"></script>
+    <script src="/static/js/screen.js"></script>
+</body>
+</html>

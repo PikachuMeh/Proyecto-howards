@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="admin_title">Sorting Hat — Headmaster Control Panel</title>
+    <link rel="stylesheet" href="/static/css/common.css">
+    <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+    <header class="admin-header">
+        <div class="admin-header-content">
+            <div class="brand">
+                <span class="brand-icon">🏰</span>
+                <span class="brand-title" data-i18n="admin_title">Sorting Hat — Headmaster Control Panel</span>
+            </div>
+            <div class="header-actions">
+                <div id="admin-user-badge" class="admin-user-badge hidden">
+                    <span class="admin-avatar">🧙‍♂️</span>
+                    <span id="admin-user-name" class="admin-name">Prof. Albus Dumbledore</span>
+                    <span id="admin-user-role" class="admin-role">Headmaster</span>
+                </div>
+                <div class="lang-switch">
+                    <button type="button" class="lang-btn active" data-lang="en">EN</button>
+                    <button type="button" class="lang-btn" data-lang="de">DE</button>
+                </div>
+                <button type="button" id="btn-logout" class="btn-outline small-btn hidden" data-i18n="logout">Log Out</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="admin-container">
+        <!-- 1. Login Modal / View -->
+        <section id="admin-login-view" class="admin-view active">
+            <div class="card login-card">
+                <div class="login-crest">🧙‍♂️</div>
+                <h2 class="gold-title" data-i18n="login_header">Restricted Access: Headmasters Only</h2>
+                <form id="form-admin-login" class="login-form">
+                    <div class="form-group">
+                        <label for="admin-username" data-i18n="username_label">Administrator Username</label>
+                        <input type="text" id="admin-username" value="admin" placeholder="e.g., admin or dumbledore" 
+                               data-i18n-placeholder="username_placeholder" required autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-password" data-i18n="password_label">Secret Spell (Password)</label>
+                        <input type="password" id="admin-password" value="alohomora" placeholder="Enter secret spell (password)..." 
+                               data-i18n-placeholder="password_placeholder" required autocomplete="current-password">
+                    </div>
+                    <div id="login-error" class="error-banner hidden"></div>
+                    <button type="submit" class="btn-magical full-width" data-i18n="btn_login">Alohomora (Log In)</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- 2. Dashboard View -->
+        <section id="admin-dashboard-view" class="admin-view">
+            <!-- Top Controls & Stats -->
+            <div class="dashboard-grid">
+                <!-- Stat Cards -->
+                <div class="card stat-card">
+                    <div class="stat-number" id="stat-registered-count">0</div>
+                    <div class="stat-label" data-i18n="stat_total_participants">Total Registered</div>
+                </div>
+
+                <div class="card stat-card">
+                    <div class="stat-number" id="stat-sorted-count">0</div>
+                    <div class="stat-label" data-i18n="stat_total_assigned">Sorted Students</div>
+                </div>
+
+                <!-- Balancing Mode Switch (FR-18) -->
+                <div class="card stat-card balancing-card">
+                    <div class="balancing-header">
+                        <span class="balancing-title" data-i18n="stat_balancing_mode">House Balancing Mode</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-balancing">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <p class="stat-desc" data-i18n="stat_balancing_desc">
+                        Penalizes saturated houses to keep house sizes even (FR-18)
+                    </p>
+                </div>
+            </div>
+
+            <!-- Action Toolbar -->
+            <div class="toolbar-card card">
+                <div class="toolbar-left">
+                    <button type="button" id="btn-show-qr" class="btn-outline" data-i18n="btn_show_qr">Display QR Code</button>
+                    <button type="button" id="btn-export-csv" class="btn-outline" data-i18n="btn_export_csv">Export CSV</button>
+                    <button type="button" id="btn-closing-stats" class="btn-outline" data-i18n="btn_closing_stats">Closing Statistics</button>
+                </div>
+                <div class="toolbar-right">
+                    <button type="button" id="btn-reset-event" class="btn-danger" data-i18n="btn_reset_event">Reset Event</button>
+                </div>
+            </div>
+
+            <!-- Participant Roster Table (FR-14) -->
+            <div class="card roster-card">
+                <div class="roster-header">
+                    <h3 class="gold-title" data-i18n="participants_table_title">Participant Roster</h3>
+                    <input type="text" id="roster-search" class="search-input" placeholder="Search by name...">
+                </div>
+
+                <div class="table-responsive">
+                    <table class="roster-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="col_id">ID</th>
+                                <th data-i18n="col_name">Name</th>
+                                <th data-i18n="col_language">Language</th>
+                                <th data-i18n="col_house">House</th>
+                                <th data-i18n="col_score">Score</th>
+                                <th data-i18n="col_assigned_at">Assigned At</th>
+                                <th data-i18n="col_actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roster-tbody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal: Reassign House (FR-15) -->
+    <div id="modal-reassign" class="modal-overlay hidden">
+        <div class="card modal-card">
+            <h3 class="gold-title" data-i18n="reassign_modal_title">Manually Reassign House</h3>
+            <p id="modal-reassign-participant" class="modal-subtext">Participant: Albus</p>
+            <div class="reassign-options">
+                <label class="house-radio gry">
+                    <input type="radio" name="reassign-house" value="1">
+                    <span>🦁 Gryffindor</span>
+                </label>
+                <label class="house-radio rav">
+                    <input type="radio" name="reassign-house" value="2">
+                    <span>🦅 Ravenclaw</span>
+                </label>
+                <label class="house-radio huf">
+                    <input type="radio" name="reassign-house" value="3">
+                    <span>🦡 Hufflepuff</span>
+                </label>
+                <label class="house-radio sly">
+                    <input type="radio" name="reassign-house" value="4">
+                    <span>🐍 Slytherin</span>
+                </label>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="btn-cancel-reassign" class="btn-outline" data-i18n="btn_cancel">Cancel</button>
+                <button type="button" id="btn-save-reassign" class="btn-magical" data-i18n="btn_save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: QR Code Access -->
+    <div id="modal-qr" class="modal-overlay hidden">
+        <div class="card modal-card qr-card">
+            <h3 class="gold-title" data-i18n="scan_to_join">Scan to Join the Sorting Ceremony</h3>
+            <div id="qr-code-img-container" class="qr-container">
+                <!-- QR generated dynamically -->
+                <img id="qr-img" src="" alt="QR Code" class="qr-image">
+            </div>
+            <p id="qr-url-text" class="qr-url"></p>
+            <button type="button" id="btn-close-qr" class="btn-outline" data-i18n="btn_cancel">Close</button>
+        </div>
+    </div>
+
+    <!-- Modal: Closing Statistics -->
+    <div id="modal-stats" class="modal-overlay hidden">
+        <div class="card modal-card stats-modal-card">
+            <h3 class="gold-title" data-i18n="btn_closing_stats">Closing Statistics</h3>
+            <div id="stats-content" class="stats-summary-container">
+                <!-- Populated by JS -->
+            </div>
+            <button type="button" id="btn-close-stats" class="btn-outline" data-i18n="btn_cancel">Close</button>
+        </div>
+    </div>
+
+    <script src="/static/js/i18n.js"></script>
+    <script src="/static/js/admin.js"></script>
+</body>
+</html>

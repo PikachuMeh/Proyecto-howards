@@ -1,0 +1,336 @@
+/* Public Screen (Projector / TV 5-meter distance layout) */
+
+body.screen-body {
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: #060810;
+    user-select: none;
+}
+
+.screen-header {
+    background: rgba(10, 14, 26, 0.95);
+    border-bottom: 2px solid var(--gold-border);
+    padding: 12px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    z-index: 50;
+}
+
+.screen-title-box {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.ceremony-hat {
+    font-size: 2.2rem;
+}
+
+.main-screen-title {
+    font-size: 1.8rem;
+    letter-spacing: 2px;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    padding: 6px 14px;
+    border-radius: 20px;
+}
+
+.status-indicator.reconnecting {
+    color: #facc15;
+    background: rgba(250, 204, 21, 0.1);
+    border-color: rgba(250, 204, 21, 0.3);
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: currentColor;
+    box-shadow: 0 0 8px currentColor;
+    animation: liveBlink 2s infinite;
+}
+
+@keyframes liveBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* Houses Grid - 4 Columns */
+.houses-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    padding: 16px 24px 24px;
+    overflow: hidden;
+}
+
+.house-zone {
+    border-radius: 18px;
+    border: 2px solid transparent;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+    position: relative;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.house-zone.highlight-target {
+    transform: scale(1.02);
+    box-shadow: 0 0 40px var(--gold-glow);
+    z-index: 10;
+}
+
+/* Gryffindor */
+.zone-gry {
+    background: linear-gradient(180deg, rgba(116, 0, 1, 0.4) 0%, rgba(20, 10, 15, 0.85) 100%);
+    border-color: rgba(116, 0, 1, 0.6);
+}
+.zone-gry .house-zone-header {
+    background: rgba(116, 0, 1, 0.7);
+    border-bottom: 2px solid var(--gry-accent);
+}
+
+/* Ravenclaw */
+.zone-rav {
+    background: linear-gradient(180deg, rgba(14, 26, 64, 0.5) 0%, rgba(10, 15, 25, 0.85) 100%);
+    border-color: rgba(14, 26, 64, 0.6);
+}
+.zone-rav .house-zone-header {
+    background: rgba(14, 26, 64, 0.7);
+    border-bottom: 2px solid var(--rav-accent);
+}
+
+/* Hufflepuff */
+.zone-huf {
+    background: linear-gradient(180deg, rgba(236, 185, 57, 0.35) 0%, rgba(25, 20, 15, 0.85) 100%);
+    border-color: rgba(236, 185, 57, 0.6);
+}
+.zone-huf .house-zone-header {
+    background: rgba(236, 185, 57, 0.6);
+    color: #111;
+    border-bottom: 2px solid var(--huf-accent);
+}
+.zone-huf .house-name, .zone-huf .house-counter {
+    color: #fff;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+/* Slytherin */
+.zone-sly {
+    background: linear-gradient(180deg, rgba(26, 71, 42, 0.4) 0%, rgba(10, 20, 15, 0.85) 100%);
+    border-color: rgba(26, 71, 42, 0.6);
+}
+.zone-sly .house-zone-header {
+    background: rgba(26, 71, 42, 0.7);
+    border-bottom: 2px solid var(--sly-accent);
+}
+
+.house-zone-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.crest-circle {
+    font-size: 2.5rem;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
+}
+
+.house-zone-meta {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.house-name {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    letter-spacing: 1px;
+}
+
+.house-counter {
+    font-family: var(--font-heading);
+    font-size: 1.8rem;
+    font-weight: bold;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 4px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    min-width: 45px;
+    text-align: center;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.house-counter.bump {
+    transform: scale(1.4);
+    background: var(--gold-primary);
+    color: #111;
+}
+
+.house-students-container {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+}
+
+.students-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.student-pill {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 1.15rem;
+    font-weight: 500;
+    color: #f3f4f6;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: pillSlideIn 0.5s ease-out;
+}
+
+.student-pill.recent {
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+    background: rgba(245, 197, 24, 0.15);
+}
+
+@keyframes pillSlideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Center Stage Modal Animation */
+.center-stage {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: stageFadeIn 0.3s ease-out;
+}
+
+@keyframes stageFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.center-stage-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(4, 6, 12, 0.85);
+    backdrop-filter: blur(12px);
+}
+
+.center-content {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    max-width: 800px;
+}
+
+.center-hat {
+    font-size: 7rem;
+    animation: hatSuspense 1.5s ease-in-out infinite;
+    filter: drop-shadow(0 0 30px var(--gold-glow));
+}
+
+@keyframes hatSuspense {
+    0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+    25% { transform: translateY(-12px) rotate(-8deg) scale(1.1); }
+    75% { transform: translateY(-6px) rotate(8deg) scale(1.05); }
+}
+
+.hesitant-banner {
+    font-size: 1.4rem;
+    font-style: italic;
+    color: var(--gold-primary);
+    text-shadow: 0 0 10px var(--gold-glow);
+    animation: blinkGlow 1s infinite alternate;
+}
+
+@keyframes blinkGlow {
+    from { opacity: 0.7; }
+    to { opacity: 1; }
+}
+
+.flying-name {
+    font-family: var(--font-heading);
+    font-size: 3.8rem;
+    font-weight: bold;
+    color: #ffffff;
+    text-shadow: 0 0 30px rgba(255, 255, 255, 0.8);
+    letter-spacing: 2px;
+}
+
+.flying-destination {
+    font-family: var(--font-heading);
+    font-size: 3.2rem;
+    font-weight: bold;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    animation: shoutReveal 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    text-shadow: 0 0 35px currentColor;
+}
+
+@keyframes shoutReveal {
+    0% { transform: scale(0.2); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* Flying Transition Animation (Section 9.4) */
+.flying-particle {
+    position: fixed;
+    z-index: 2000;
+    pointer-events: none;
+    font-family: var(--font-heading);
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.85);
+    border: 2px solid var(--gold-primary);
+    padding: 10px 24px;
+    border-radius: 30px;
+    box-shadow: 0 0 30px var(--gold-glow);
+    transition: all 1s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@media (max-width: 900px) {
+    .houses-grid {
+        grid-template-columns: repeat(2, 1fr);
+        overflow-y: auto;
+    }
+}
