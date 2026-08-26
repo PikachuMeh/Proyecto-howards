@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="screen_title">Hogwarts Sorting Ceremony</title>
-    <link rel="stylesheet" href="/static/css/common.css">
-    <link rel="stylesheet" href="/static/css/screen.css">
+    <link rel="stylesheet" href="/static/css/common.css?v=20260826_02">
+    <link rel="stylesheet" href="/static/css/screen.css?v=20260826_02">
 </head>
 <body class="screen-body">
     <!-- Top Header Bar for Projector -->
@@ -27,15 +27,16 @@
     </header>
 
     <!-- Center Stage for Sorting Animation -->
-    <div id="center-stage" class="center-stage hidden">
+    <div id="center-stage" class="center-stage hidden" style="display: none;" title="Click anywhere to dismiss">
         <div class="center-stage-backdrop"></div>
+        <button type="button" id="btn-close-center-stage" class="center-stage-close" aria-label="Close">✕</button>
         <div class="center-content">
             <div id="center-hat-anim" class="center-hat">🎩</div>
             <p id="hesitant-banner" class="hesitant-banner hidden" data-i18n="hesitant_text">
                 "Hmm... a difficult choice between two great houses..."
             </p>
-            <div id="flying-name" class="flying-name">Harry Potter</div>
-            <div id="flying-destination" class="flying-destination">GRYFFINDOR!</div>
+            <div id="flying-name" class="flying-name"></div>
+            <div id="flying-destination" class="flying-destination"></div>
         </div>
     </div>
 
@@ -106,7 +107,7 @@
         </section>
     </main>
 
-    <script src="/static/js/i18n.js"></script>
-    <script src="/static/js/screen.js"></script>
+    <script src="/static/js/i18n.js?v=20260826_02"></script>
+    <script src="/static/js/screen.js?v=20260826_02"></script>
 </body>
 </html>

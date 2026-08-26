@@ -84,6 +84,7 @@ The database enforces referential integrity (`PRAGMA foreign_keys = ON;`):
 - `participant` — Guest records identified by display name and unique UUID `session_token`.
 - `answer` — Records chosen options with `UNIQUE(participant_id, question_id)` preventing duplicate answers.
 - `assignment` — Final house assignment with `UNIQUE(participant_id)` guaranteeing nobody gets sorted twice.
+- `administrator` — Administrator credentials (`id`, `username UNIQUE`, `password_hash`, `full_name`, `role`, `created_at`).
 
 ---
 

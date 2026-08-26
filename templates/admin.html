@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="admin_title">Sorting Hat — Headmaster Control Panel</title>
-    <link rel="stylesheet" href="/static/css/common.css">
-    <link rel="stylesheet" href="/static/css/admin.css">
+    <link rel="stylesheet" href="/static/css/common.css?v=20260826_02">
+    <link rel="stylesheet" href="/static/css/admin.css?v=20260826_02">
 </head>
 <body>
     <header class="admin-header">
@@ -124,7 +124,7 @@
     </main>
 
     <!-- Modal: Reassign House (FR-15) -->
-    <div id="modal-reassign" class="modal-overlay hidden">
+    <div id="modal-reassign" class="modal-overlay hidden" style="display: none;">
         <div class="card modal-card">
             <h3 class="gold-title" data-i18n="reassign_modal_title">Manually Reassign House</h3>
             <p id="modal-reassign-participant" class="modal-subtext">Participant: Albus</p>
@@ -154,7 +154,7 @@
     </div>
 
     <!-- Modal: QR Code Access -->
-    <div id="modal-qr" class="modal-overlay hidden">
+    <div id="modal-qr" class="modal-overlay hidden" style="display: none;">
         <div class="card modal-card qr-card">
             <h3 class="gold-title" data-i18n="scan_to_join">Scan to Join the Sorting Ceremony</h3>
             <div id="qr-code-img-container" class="qr-container">
@@ -167,7 +167,7 @@
     </div>
 
     <!-- Modal: Closing Statistics -->
-    <div id="modal-stats" class="modal-overlay hidden">
+    <div id="modal-stats" class="modal-overlay hidden" style="display: none;">
         <div class="card modal-card stats-modal-card">
             <h3 class="gold-title" data-i18n="btn_closing_stats">Closing Statistics</h3>
             <div id="stats-content" class="stats-summary-container">
@@ -177,7 +177,7 @@
         </div>
     </div>
 
-    <script src="/static/js/i18n.js"></script>
-    <script src="/static/js/admin.js"></script>
+    <script src="/static/js/i18n.js?v=20260826_02"></script>
+    <script src="/static/js/admin.js?v=20260826_02"></script>
 </body>
 </html>

@@ -12,7 +12,9 @@ from app.sse_manager import sse_manager
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
 ADMIN_AUTH_COOKIE = "admin_auth_session"
-ADMIN_FALLBACK_TOKEN = "hogwarts_admin_authenticated_2026"
+ADMIN_STATIC_TOKEN = "hogwarts_admin_authenticated_2026"
+ADMIN_FALLBACK_TOKEN = ADMIN_STATIC_TOKEN
+
 
 def verify_admin(
     x_admin_token: Optional[str] = Header(None),

@@ -11,9 +11,47 @@ class PublicScreen {
     }
 
     async init() {
+        this.isDismissed = false;
+        this.dismissCenterStage();
+        this.bindEvents();
         this.bindLanguage();
         await this.loadInitialHouses();
         this.connectSSE();
+    }
+
+    bindEvents() {
+        // Dismiss immediately on clicking close button, backdrop, or anywhere on screen
+        const closeBtn = document.getElementById("btn-close-center-stage");
+        if (closeBtn) {
+            closeBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                this.dismissCenterStage();
+            });
+        }
+
+        const centerStage = document.getElementById("center-stage");
+        if (centerStage) {
+            centerStage.addEventListener("click", () => {
+                this.dismissCenterStage();
+            });
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" || e.key === " ") {
+                this.dismissCenterStage();
+            }
+        });
+    }
+
+    dismissCenterStage() {
+        this.isDismissed = true;
+        const centerStage = document.getElementById("center-stage");
+        if (centerStage) {
+            centerStage.style.display = "none";
+            centerStage.classList.add("hidden");
+        }
+        document.querySelectorAll(".flying-particle").forEach(p => p.remove());
+        document.querySelectorAll(".house-zone").forEach(z => z.classList.remove("highlight-target"));
     }
 
     bindLanguage() {
@@ -127,6 +165,8 @@ class PublicScreen {
             await this.playAssignmentAnimation(assignment);
         } catch (e) {
             console.error("Animation error", e);
+        } finally {
+            this.dismissCenterStage();
         }
 
         // Brief 600ms pause between queued animations (FR-12)
@@ -135,43 +175,65 @@ class PublicScreen {
     }
 
     async playAssignmentAnimation(data) {
+        this.isDismissed = false;
         const centerStage = document.getElementById("center-stage");
         const flyingName = document.getElementById("flying-name");
         const destination = document.getElementById("flying-destination");
         const hesitantBanner = document.getElementById("hesitant-banner");
 
         const lang = window.i18n.getLang();
-        const houseName = lang === "de" ? data.house_name_de : data.house_name_en;
+        const houseName = (lang === "de" ? data.house_name_de : data.house_name_en) || data.house_code || "Hogwarts";
 
-        // 1. Prepare center stage
-        flyingName.textContent = data.display_name;
-        destination.textContent = "";
-        destination.style.color = data.color_hex;
+        // Backup timer to guarantee modal hides within 5 seconds regardless of what happens
+        const backupTimer = setTimeout(() => {
+            this.dismissCenterStage();
+        }, 5000);
 
-        if (data.is_hesitant) {
-            hesitantBanner.classList.remove("hidden");
-        } else {
-            hesitantBanner.classList.add("hidden");
+        try {
+            // 1. Prepare center stage
+            flyingName.textContent = data.display_name || "Wizard";
+            destination.textContent = "";
+            destination.style.color = data.color_hex || "#d3a625";
+
+            if (data.is_hesitant) {
+                hesitantBanner.classList.remove("hidden");
+            } else {
+                hesitantBanner.classList.add("hidden");
+            }
+
+            if (centerStage) {
+                centerStage.style.display = "flex";
+                centerStage.classList.remove("hidden");
+            }
+            this.playDrumroll();
+
+            // 2. Suspense pause (1.5s - 2.2s if hesitant)
+            const suspenseTime = data.is_hesitant ? 2200 : 1500;
+            await this.sleep(suspenseTime);
+            if (this.isDismissed) return;
+
+            // 3. Reveal House Name shouting
+            destination.textContent = `${houseName.toUpperCase()}!`;
+            this.playHouseFanfare();
+            await this.sleep(1200);
+            if (this.isDismissed) return;
+
+            // 4. Smooth flying transition into house column
+            if (centerStage) {
+                centerStage.style.display = "none";
+                centerStage.classList.add("hidden");
+            }
+            await this.animateFlightToHouse(data, houseName);
+
+            // 5. Update house column count & roster
+            this.addParticipantToColumn(data);
+        } finally {
+            clearTimeout(backupTimer);
+            if (centerStage) {
+                centerStage.style.display = "none";
+                centerStage.classList.add("hidden");
+            }
         }
-
-        centerStage.classList.remove("hidden");
-        this.playDrumroll();
-
-        // 2. Suspense pause (1.5s - 2.2s if hesitant)
-        const suspenseTime = data.is_hesitant ? 2200 : 1500;
-        await this.sleep(suspenseTime);
-
-        // 3. Reveal House Name shouting
-        destination.textContent = `${houseName.toUpperCase()}!`;
-        this.playHouseFanfare();
-        await this.sleep(1200);
-
-        // 4. Smooth flying transition into house column
-        centerStage.classList.add("hidden");
-        await this.animateFlightToHouse(data, houseName);
-
-        // 5. Update house column count & roster
-        this.addParticipantToColumn(data);
     }
 
     async animateFlightToHouse(data, houseName) {

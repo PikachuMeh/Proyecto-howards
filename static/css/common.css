@@ -146,8 +146,8 @@ button, .btn, input[type="text"], input[type="password"] {
     background: rgba(245, 197, 24, 0.15);
 }
 
-/* Sound synthesis helper via Web Audio API */
-.audio-hint {
-    font-size: 0.75rem;
-    color: var(--text-muted);
+/* Utility classes */
+.hidden {
+    display: none !important;
 }
+
