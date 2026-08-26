@@ -5,11 +5,14 @@ class AdminApp {
         this.token = sessionStorage.getItem("admin_token") || null;
         this.participants = [];
         this.selectedParticipantId = null;
+        this.currentHouseFilter = "ALL";
+        this.currentSearchQuery = "";
 
         this.init();
     }
 
     init() {
+        this.hideAllModals();
         this.bindEvents();
         if (this.token) {
             this.showDashboard();
@@ -37,6 +40,17 @@ class AdminApp {
             toggleBalancing.addEventListener("change", (e) => this.handleBalancingToggle(e.target.checked));
         }
 
+        // House Filter Buttons
+        document.querySelectorAll(".house-filter-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                document.querySelectorAll(".house-filter-btn").forEach(b => b.classList.remove("active"));
+                const target = e.currentTarget;
+                target.classList.add("active");
+                this.currentHouseFilter = target.getAttribute("data-filter") || "ALL";
+                this.applyFilters();
+            });
+        });
+
         // Search roster
         const searchInput = document.getElementById("roster-search");
         if (searchInput) {
@@ -49,11 +63,27 @@ class AdminApp {
         document.getElementById("btn-show-qr").addEventListener("click", () => this.handleShowQr());
         document.getElementById("btn-closing-stats").addEventListener("click", () => this.handleShowStats());
 
-        // Modals
+        // Modals Buttons
         document.getElementById("btn-cancel-reassign").addEventListener("click", () => this.hideModal("modal-reassign"));
         document.getElementById("btn-save-reassign").addEventListener("click", () => this.saveReassignment());
         document.getElementById("btn-close-qr").addEventListener("click", () => this.hideModal("modal-qr"));
         document.getElementById("btn-close-stats").addEventListener("click", () => this.hideModal("modal-stats"));
+
+        // Backdrop click to close modals
+        document.querySelectorAll(".modal-overlay").forEach(overlay => {
+            overlay.addEventListener("click", (e) => {
+                if (e.target === overlay) {
+                    this.hideModal(overlay.id);
+                }
+            });
+        });
+
+        // Escape key to close modals
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") {
+                this.hideAllModals();
+            }
+        });
 
         // Language change event
         window.addEventListener("langchange", () => {
@@ -181,7 +211,7 @@ class AdminApp {
             const res = await fetch(`/api/admin/participants?lang=${lang}`, { headers: this.getAuthHeaders() });
             if (res.ok) {
                 this.participants = await res.json();
-                this.renderRoster(this.participants);
+                this.applyFilters();
                 this.updateSummaryCounters();
             } else if (res.status === 401) {
                 this.handleLogout();
@@ -197,13 +227,26 @@ class AdminApp {
         document.getElementById("stat-sorted-count").textContent = sorted;
     }
 
+    applyFilters() {
+        const q = (this.currentSearchQuery || "").toLowerCase().trim();
+        const house = this.currentHouseFilter || "ALL";
+
+        const filtered = this.participants.filter(p => {
+            const matchesName = !q || (p.display_name && p.display_name.toLowerCase().includes(q));
+            const matchesHouse = (house === "ALL") || (p.house_code === house);
+            return matchesName && matchesHouse;
+        });
+
+        this.renderRoster(filtered);
+    }
+
     renderRoster(list) {
         const tbody = document.getElementById("roster-tbody");
         tbody.innerHTML = "";
 
         if (list.length === 0) {
             const tr = document.createElement("tr");
-            tr.innerHTML = `<td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">No participants found.</td>`;
+            tr.innerHTML = `<td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">No participants found matching current filters.</td>`;
             tbody.appendChild(tr);
             return;
         }
@@ -235,9 +278,8 @@ class AdminApp {
     }
 
     filterRoster(query) {
-        const q = query.toLowerCase().trim();
-        const filtered = this.participants.filter(p => p.display_name.toLowerCase().includes(q));
-        this.renderRoster(filtered);
+        this.currentSearchQuery = query;
+        this.applyFilters();
     }
 
     openReassignModal(participantId, name) {
@@ -363,12 +405,25 @@ class AdminApp {
 
     showModal(id) {
         const m = document.getElementById(id);
-        if (m) m.classList.remove("hidden");
+        if (m) {
+            m.style.display = "flex";
+            m.classList.remove("hidden");
+        }
     }
 
     hideModal(id) {
         const m = document.getElementById(id);
-        if (m) m.classList.add("hidden");
+        if (m) {
+            m.style.display = "none";
+            m.classList.add("hidden");
+        }
+    }
+
+    hideAllModals() {
+        document.querySelectorAll(".modal-overlay").forEach(m => {
+            m.style.display = "none";
+            m.classList.add("hidden");
+        });
     }
 
     escapeHtml(str) {

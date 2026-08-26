@@ -1,6 +1,7 @@
 from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -62,6 +63,14 @@ async def screen_page(request: Request):
 async def admin_page(request: Request):
     return templates.TemplateResponse(request=request, name="admin.html")
 
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    ico_path = STATIC_DIR / "favicon.ico"
+    if ico_path.exists():
+        return FileResponse(ico_path, media_type="image/x-icon")
+    return FileResponse(STATIC_DIR / "images" / "hogwarts_favicon.png", media_type="image/png")
+
 @app.get("/health")
 def health_check():
     return {"status": "ok", "app": "Hogwarts Sorting Hat"}
+

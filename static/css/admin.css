@@ -254,7 +254,85 @@ input:checked + .slider:before {
     align-items: center;
     margin-bottom: 18px;
     flex-wrap: wrap;
+    gap: 16px;
+}
+
+.roster-title-area {
+    display: flex;
+    align-items: center;
     gap: 12px;
+}
+
+.roster-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.house-filter-buttons {
+    display: inline-flex;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid var(--border-subtle);
+    border-radius: 24px;
+    padding: 3px;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.house-filter-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    min-height: 32px;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.house-filter-btn:hover {
+    color: var(--text-light);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.house-filter-btn.active {
+    color: #111;
+    background: var(--gold-primary);
+    box-shadow: 0 0 12px var(--gold-glow);
+}
+
+.house-filter-btn.gry.active {
+    background: #740001;
+    color: #fca5a5;
+    border: 1px solid var(--gry-accent);
+    box-shadow: 0 0 12px rgba(116, 0, 1, 0.6);
+}
+
+.house-filter-btn.rav.active {
+    background: #0e1a40;
+    color: #93c5fd;
+    border: 1px solid var(--rav-accent);
+    box-shadow: 0 0 12px rgba(14, 26, 64, 0.8);
+}
+
+.house-filter-btn.huf.active {
+    background: #ecb939;
+    color: #111;
+    border: 1px solid var(--huf-accent);
+    box-shadow: 0 0 12px rgba(236, 185, 57, 0.6);
+}
+
+.house-filter-btn.sly.active {
+    background: #1a472a;
+    color: #86efac;
+    border: 1px solid var(--sly-accent);
+    box-shadow: 0 0 12px rgba(26, 71, 42, 0.6);
 }
 
 .search-input {
@@ -341,6 +419,10 @@ input:checked + .slider:before {
     justify-content: center;
     z-index: 1000;
     padding: 16px;
+}
+
+.modal-overlay.hidden {
+    display: none !important;
 }
 
 .modal-card {
