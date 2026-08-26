@@ -78,6 +78,20 @@ class AdminApp {
         document.getElementById("btn-show-qr").addEventListener("click", () => this.handleShowQr());
         document.getElementById("btn-closing-stats").addEventListener("click", () => this.handleShowStats());
 
+        // QR Modal Controls
+        const qrInput = document.getElementById("qr-url-input");
+        if (qrInput) {
+            qrInput.addEventListener("input", (e) => this.updateQrCode(e.target.value.trim()));
+        }
+        const btnCopyQr = document.getElementById("btn-copy-qr-url");
+        if (btnCopyQr) {
+            btnCopyQr.addEventListener("click", () => this.copyQrUrl());
+        }
+        const btnDetectIp = document.getElementById("btn-detect-ip");
+        if (btnDetectIp) {
+            btnDetectIp.addEventListener("click", () => this.autoDetectIp());
+        }
+
         // Modals Buttons
         document.getElementById("btn-cancel-reassign").addEventListener("click", () => this.hideModal("modal-reassign"));
         document.getElementById("btn-save-reassign").addEventListener("click", () => this.saveReassignment());
@@ -460,15 +474,78 @@ class AdminApp {
         window.location.href = `/api/admin/export/csv?auth_token=${this.token}`;
     }
 
-    handleShowQr() {
-        const guestUrl = `${window.location.origin}/`;
-        document.getElementById("qr-url-text").textContent = guestUrl;
-        
-        // Generate QR code using public dynamic QR API
-        const qrImg = document.getElementById("qr-img");
-        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(guestUrl)}`;
+    async handleShowQr() {
+        const savedUrl = localStorage.getItem("custom_qr_url");
+        let initialUrl = savedUrl;
 
+        if (!initialUrl) {
+            // If admin is accessed from an IP (not localhost), use origin
+            if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+                initialUrl = `${window.location.origin}/`;
+            } else {
+                // Fetch auto-detected LAN IP from backend
+                try {
+                    const res = await fetch("/api/server-info");
+                    if (res.ok) {
+                        const info = await res.json();
+                        initialUrl = info.guest_url;
+                    }
+                } catch (e) {}
+            }
+        }
+
+        if (!initialUrl) {
+            initialUrl = `${window.location.origin}/`;
+        }
+
+        const qrInput = document.getElementById("qr-url-input");
+        if (qrInput) {
+            qrInput.value = initialUrl;
+        }
+
+        this.updateQrCode(initialUrl);
         this.showModal("modal-qr");
+    }
+
+    updateQrCode(url) {
+        if (!url) return;
+        const qrImg = document.getElementById("qr-img");
+        if (qrImg) {
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(url)}`;
+        }
+        localStorage.setItem("custom_qr_url", url);
+    }
+
+    async autoDetectIp() {
+        try {
+            const res = await fetch("/api/server-info");
+            if (res.ok) {
+                const info = await res.json();
+                const qrInput = document.getElementById("qr-url-input");
+                if (qrInput) {
+                    qrInput.value = info.guest_url;
+                }
+                this.updateQrCode(info.guest_url);
+            }
+        } catch (e) {
+            alert("Could not detect local IP automatically.");
+        }
+    }
+
+    copyQrUrl() {
+        const qrInput = document.getElementById("qr-url-input");
+        if (qrInput && qrInput.value) {
+            navigator.clipboard.writeText(qrInput.value).then(() => {
+                const btn = document.getElementById("btn-copy-qr-url");
+                if (btn) {
+                    const orig = btn.textContent;
+                    btn.textContent = "✅ Copied!";
+                    setTimeout(() => btn.textContent = orig, 2000);
+                }
+            }).catch(() => {
+                prompt("Copy the URL:", qrInput.value);
+            });
+        }
     }
 
     async handleShowStats() {
@@ -479,23 +556,65 @@ class AdminApp {
                 const container = document.getElementById("stats-content");
                 const lang = window.i18n.getLang();
 
-                let housesHtml = (data.house_distribution || []).map(h => `
-                    <div class="stats-row">
-                        <span>${h.name_en} / ${h.name_de}</span>
-                        <strong>${h.total} students</strong>
-                    </div>
-                `).join("");
+                const crestIcons = { "GRY": "🦁", "RAV": "🦅", "HUF": "🦡", "SLY": "🐍" };
+
+                let housesHtml = (data.house_distribution || []).map(h => {
+                    const houseName = lang === "de" ? h.name_de : h.name_en;
+                    const percent = data.total_assigned > 0 ? Math.round((h.total / data.total_assigned) * 100) : 0;
+                    return `
+                        <div class="stats-row">
+                            <span>${crestIcons[h.code] || ''} <strong>${houseName}</strong></span>
+                            <strong>${h.total} (${percent}%)</strong>
+                        </div>
+                    `;
+                }).join("");
+
+                let largestHouseHtml = "";
+                if (data.largest_house && data.largest_house.total > 0) {
+                    const lName = lang === "de" ? data.largest_house.name_de : data.largest_house.name_en;
+                    largestHouseHtml = `
+                        <div class="stats-row" style="background: rgba(245, 197, 24, 0.2); border: 1px solid var(--gold-primary);">
+                            <span>🏆 ${lang === 'de' ? 'Größtes Haus des Abends' : 'Largest House of the Night'}:</span>
+                            <strong style="color: var(--gold-primary); font-size: 1.1rem;">${crestIcons[data.largest_house.code] || ''} ${lName} (${data.largest_house.total})</strong>
+                        </div>
+                    `;
+                }
+
+                let divisiveHtml = "";
+                if (data.most_divisive_question) {
+                    const qText = lang === "de" ? data.most_divisive_question.text_de : data.most_divisive_question.text_en;
+                    divisiveHtml = `
+                        <div class="stats-row" style="flex-direction: column; align-items: flex-start; gap: 4px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3);">
+                            <span style="font-size: 0.85rem; color: #93c5fd;">⚡ ${lang === 'de' ? 'Umstrittenste Frage' : 'Most Divisive Question'}:</span>
+                            <span style="font-style: italic; font-size: 0.95rem;">"${this.escapeHtml(qText)}"</span>
+                        </div>
+                    `;
+                }
+
+                let incompleteHtml = "";
+                if (data.incomplete_participants && data.incomplete_participants.length > 0) {
+                    const names = data.incomplete_participants.map(p => this.escapeHtml(p.display_name)).join(", ");
+                    incompleteHtml = `
+                        <div class="stats-row" style="flex-direction: column; align-items: flex-start; gap: 4px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3);">
+                            <span style="font-size: 0.85rem; color: #fca5a5;">⏳ ${lang === 'de' ? 'In Bearbeitung / Nicht abgeschlossen' : 'In Progress / Not finished'} (${data.incomplete_participants.length}):</span>
+                            <span style="font-size: 0.85rem; color: var(--text-muted);">${names}</span>
+                        </div>
+                    `;
+                }
 
                 container.innerHTML = `
-                    <div class="stats-row" style="background: rgba(245, 197, 24, 0.15);">
-                        <span>Total Guests Registered:</span>
+                    <div class="stats-row" style="background: rgba(255, 255, 255, 0.05);">
+                        <span>${lang === 'de' ? 'Registrierte Gäste' : 'Total Guests Registered'}:</span>
                         <strong>${data.total_participants}</strong>
                     </div>
-                    <div class="stats-row" style="background: rgba(245, 197, 24, 0.15);">
-                        <span>Total Sorted Students:</span>
+                    <div class="stats-row" style="background: rgba(255, 255, 255, 0.05);">
+                        <span>${lang === 'de' ? 'Zugeordnete Schüler' : 'Total Sorted Students'}:</span>
                         <strong>${data.total_assigned}</strong>
                     </div>
-                    <h4 style="color: var(--gold-primary); margin-top: 10px;">House Distribution:</h4>
+                    ${largestHouseHtml}
+                    ${divisiveHtml}
+                    ${incompleteHtml}
+                    <h4 style="color: var(--gold-primary); margin-top: 10px; margin-bottom: 4px;">${lang === 'de' ? 'Hausverteilung' : 'House Distribution'}:</h4>
                     ${housesHtml}
                 `;
 

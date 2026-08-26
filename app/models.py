@@ -1,9 +1,25 @@
-from pydantic import BaseModel, Field
+import re
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Dict, Any, Optional
+
+WIZARD_NAME_REGEX = re.compile(r"^[a-zA-Z\u00C0-\u024F\u1E00-\u1EFF\s'\-]+$")
 
 class ParticipantCreate(BaseModel):
     display_name: str = Field(..., min_length=2, max_length=40, description="Display name for the guest")
     preferred_lang: str = Field("en", pattern="^(en|de)$", description="Language: 'en' or 'de'")
+
+    @field_validator("display_name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        cleaned = v.strip()
+        if len(cleaned) < 2 or len(cleaned) > 40:
+            raise ValueError("Display name must be between 2 and 40 characters.")
+        if not WIZARD_NAME_REGEX.match(cleaned):
+            raise ValueError("Wizard name can only contain letters, spaces, hyphens, and apostrophes (no numbers or symbols).")
+        letter_count = sum(1 for c in cleaned if c.isalpha())
+        if letter_count < 2:
+            raise ValueError("Wizard name must contain at least 2 alphabetic letters.")
+        return cleaned
 
 class ParticipantResponse(BaseModel):
     id: int

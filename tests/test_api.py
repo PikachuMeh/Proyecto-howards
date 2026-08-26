@@ -228,4 +228,32 @@ def test_auto_balance_houses(client):
     for h in houses_after:
         assert h["total"] == 1
 
+def test_wizard_name_validation(client):
+    """Test wizard name validation rejects numbers and special symbols but allows orthographic characters."""
+    # 1. Reject numeric names
+    for bad_name in ["123", "harry7", "007", "m4lffoy", "42"]:
+        res = client.post("/api/participants", json={"display_name": bad_name})
+        assert res.status_code in [400, 422], f"Expected rejection for '{bad_name}', got {res.status_code}"
+
+    # 2. Reject disallowed special symbols
+    for bad_name in ["Harry#Potter", "Voldemort!", "Albus@Dumbledore", "Ron$Weasley", "Draco_Malfoy"]:
+        res = client.post("/api/participants", json={"display_name": bad_name})
+        assert res.status_code in [400, 422], f"Expected rejection for '{bad_name}', got {res.status_code}"
+
+    # 3. Accept valid names with letters, spaces, hyphens, apostrophes, and accents
+    valid_names = [
+        "Harry Potter",
+        "Hermione Granger",
+        "Müller-Schmidt",
+        "O'Flaherty",
+        "François D'Amico",
+        "José Peña",
+        "Jean-Luc",
+        "Pomona Sprout"
+    ]
+    for good_name in valid_names:
+        res = client.post("/api/participants", json={"display_name": good_name})
+        assert res.status_code == 201, f"Expected acceptance for '{good_name}', got {res.status_code}"
+
+
 

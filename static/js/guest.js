@@ -110,6 +110,14 @@ class GuestApp {
             return;
         }
 
+        // Validate characters: only letters (including accents), spaces, hyphens, and apostrophes allowed (no numbers or symbols)
+        const nameRegex = /^[a-zA-Z\u00C0-\u024F\u1E00-\u1EFF\s'\-]+$/;
+        const letterCount = (name.match(/[a-zA-Z\u00C0-\u024F\u1E00-\u1EFF]/g) || []).length;
+        if (!nameRegex.test(name) || letterCount < 2) {
+            this.showError("register-error", window.i18n.t("err_invalid_name_chars"));
+            return;
+        }
+
         const btn = document.getElementById("btn-start");
         btn.disabled = true;
 
@@ -128,9 +136,12 @@ class GuestApp {
                 await this.loadQuestions();
                 this.showStep("step-questionnaire");
             } else {
-                const msg = res.status === 400 && data.detail.includes("already registered") 
-                    ? window.i18n.t("err_duplicate_name") 
-                    : (data.detail || "Registration failed");
+                let msg = data.detail || "Registration failed";
+                if (res.status === 400 && typeof data.detail === "string" && data.detail.includes("already registered")) {
+                    msg = window.i18n.t("err_duplicate_name");
+                } else if (res.status === 422 || (typeof data.detail === "string" && data.detail.includes("letters"))) {
+                    msg = window.i18n.t("err_invalid_name_chars");
+                }
                 this.showError("register-error", msg);
             }
         } catch (err) {

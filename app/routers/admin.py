@@ -15,7 +15,7 @@ ADMIN_AUTH_COOKIE = "admin_auth_session"
 ADMIN_STATIC_TOKEN = "hogwarts_admin_authenticated_2026"
 ADMIN_FALLBACK_TOKEN = ADMIN_STATIC_TOKEN
 
-
+ADMIN_PASSWORD = "Alohomora2026!"  # Default password for initial seeding or testing
 def verify_admin(
     x_admin_token: Optional[str] = Header(None),
     admin_auth_session: Optional[str] = Cookie(None),
@@ -353,15 +353,15 @@ def export_csv():
 
 @router.get("/stats", dependencies=[Depends(verify_admin)])
 def get_closing_stats():
-    """Returns closing stats: largest house, house distribution, divisive question."""
+    """Returns closing stats: largest house, house distribution, divisive question, and incomplete participants."""
     with get_db() as conn:
         cursor = conn.cursor()
         # 1. House distribution
         cursor.execute("""
-            SELECT h.id, h.code, h.name_en, h.name_de, h.color_hex, COUNT(a.id) as total
+            SELECT h.id, h.code, h.name_en, h.name_de, h.color_hex, h.crest_icon, COUNT(a.id) as total
             FROM house h
             LEFT JOIN assignment a ON a.house_id = h.id
-            GROUP BY h.id, h.code, h.name_en, h.name_de, h.color_hex
+            GROUP BY h.id, h.code, h.name_en, h.name_de, h.color_hex, h.crest_icon
             ORDER BY total DESC
         """)
         houses = [dict(h) for h in cursor.fetchall()]
@@ -373,15 +373,50 @@ def get_closing_stats():
         cursor.execute("SELECT COUNT(*) as cnt FROM assignment")
         total_assigned = cursor.fetchone()["cnt"]
 
-        # 3. Divisive question analysis (question with most evenly spread answers)
+        # 3. Query 4 from PDF section 7.4: Participants who started but never finished
         cursor.execute("""
-            SELECT q.id, q.text_en, q.text_de, COUNT(an.id) as total_answers
-            FROM question q
-            LEFT JOIN answer an ON an.question_id = q.id
-            GROUP BY q.id, q.text_en, q.text_de
-            ORDER BY total_answers DESC
+            SELECT p.id, p.display_name, COUNT(an.id) AS answered_count
+            FROM participant p
+            LEFT JOIN answer an ON an.participant_id = p.id
+            LEFT JOIN assignment a ON a.participant_id = p.id
+            WHERE a.id IS NULL
+            GROUP BY p.id, p.display_name
         """)
-        questions = [dict(q) for q in cursor.fetchall()]
+        incomplete_participants = [dict(r) for r in cursor.fetchall()]
+
+        # 4. Most divisive question (Section 15: question with highest distribution entropy/spread across options)
+        cursor.execute("""
+            SELECT q.id, q.text_en, q.text_de, an.option_id, COUNT(an.id) as opt_count
+            FROM question q
+            JOIN answer an ON an.question_id = q.id
+            GROUP BY q.id, q.text_en, q.text_de, an.option_id
+        """)
+        answer_spreads = cursor.fetchall()
+        
+        q_options = {}
+        q_texts = {}
+        for row in answer_spreads:
+            qid = row["id"]
+            if qid not in q_options:
+                q_options[qid] = []
+                q_texts[qid] = {"text_en": row["text_en"], "text_de": row["text_de"]}
+            q_options[qid].append(row["opt_count"])
+
+        most_divisive = None
+        min_variance = float('inf')
+        for qid, counts in q_options.items():
+            if len(counts) >= 2:
+                # Lower standard deviation / variance among chosen options = more evenly divided / divisive
+                avg = sum(counts) / len(counts)
+                var = sum((c - avg) ** 2 for c in counts) / len(counts)
+                if var < min_variance:
+                    min_variance = var
+                    most_divisive = {
+                        "id": qid,
+                        "text_en": q_texts[qid]["text_en"],
+                        "text_de": q_texts[qid]["text_de"],
+                        "options_chosen": len(counts)
+                    }
 
     largest_house = houses[0] if houses and houses[0]["total"] > 0 else None
 
@@ -390,5 +425,6 @@ def get_closing_stats():
         "total_assigned": total_assigned,
         "largest_house": largest_house,
         "house_distribution": houses,
-        "questions_summary": questions
+        "incomplete_participants": incomplete_participants,
+        "most_divisive_question": most_divisive
     }

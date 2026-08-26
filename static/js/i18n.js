@@ -13,6 +13,7 @@ const translations = {
         name_hint: "Between 2 and 40 characters. No account needed!",
         start_button: "Begin Sorting Ceremony",
         err_name_required: "Please enter your name (2–40 characters).",
+        err_invalid_name_chars: "Wizard names can only contain letters, spaces, hyphens, and apostrophes (no numbers or symbols).",
         err_duplicate_name: "This name is already registered for this event. Please choose another.",
         
         // Guest - Questionnaire
@@ -99,6 +100,7 @@ const translations = {
         name_hint: "Zwischen 2 und 40 Zeichen. Keine Registrierung nötig!",
         start_button: "Auswahlzeremonie beginnen",
         err_name_required: "Bitte gib deinen Namen ein (2–40 Zeichen).",
+        err_invalid_name_chars: "Zauberernamen dürfen nur Buchstaben, Leerzeichen, Bindestriche und Apostrophe enthalten (keine Zahlen oder Symbole).",
         err_duplicate_name: "Dieser Name ist für diese Feier bereits vergeben. Bitte wähle einen anderen.",
         
         // Guest - Questionnaire

@@ -3,7 +3,7 @@ import json
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Header, Cookie, HTTPException, Response, Depends, status
 from app.database import get_db
-from app.config import COOKIE_NAME
+from app.config import COOKIE_NAME, PORT, get_local_ip
 from app.models import (
     ParticipantCreate, ParticipantResponse, QuestionOut, OptionOut,
     AnswerSubmit, AssignmentOut
@@ -12,6 +12,16 @@ from app.sorting import compute_house_assignment
 from app.sse_manager import sse_manager
 
 router = APIRouter(prefix="/api", tags=["Guest"])
+
+@router.get("/server-info")
+def get_server_info():
+    """Returns local LAN IP and guest access URL for QR generation."""
+    local_ip = get_local_ip()
+    return {
+        "local_ip": local_ip,
+        "port": PORT,
+        "guest_url": f"http://{local_ip}:{PORT}/"
+    }
 
 def get_current_participant(
     x_session_token: Optional[str] = Header(None),

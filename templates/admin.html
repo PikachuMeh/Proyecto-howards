@@ -169,14 +169,30 @@
 
     <!-- Modal: QR Code Access -->
     <div id="modal-qr" class="modal-overlay hidden" style="display: none;">
-        <div class="card modal-card qr-card">
+        <div class="card modal-card qr-card" style="max-width: 440px;">
             <h3 class="gold-title" data-i18n="scan_to_join">Scan to Join the Sorting Ceremony</h3>
             <div id="qr-code-img-container" class="qr-container">
                 <!-- QR generated dynamically -->
-                <img id="qr-img" src="" alt="QR Code" class="qr-image">
+                <img id="qr-img" src="" alt="QR Code" class="qr-image" style="width: 220px; height: 220px; border-radius: 8px; background: white; padding: 6px;">
             </div>
-            <p id="qr-url-text" class="qr-url"></p>
-            <button type="button" id="btn-close-qr" class="btn-outline" data-i18n="btn_cancel">Close</button>
+            
+            <div class="qr-config-section" style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
+                <label for="qr-url-input" style="font-size: 0.85rem; color: var(--gold-primary); font-weight: 600; text-align: left;">
+                    🌐 Wi-Fi / Local Network URL:
+                </label>
+                <div style="display: flex; gap: 8px; width: 100%;">
+                    <input type="text" id="qr-url-input" class="search-input" style="flex: 1; font-family: monospace; font-size: 0.9rem;" placeholder="http://192.168.2.xxx:8000/">
+                    <button type="button" id="btn-copy-qr-url" class="btn-outline small-btn" title="Copy URL" style="padding: 0 12px;">📋 Copy</button>
+                </div>
+                <small style="color: var(--text-muted); font-size: 0.78rem; text-align: left;">
+                    💡 Direccion a la cual se van a conectar.
+                </small>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 6px; width: 100%; display: flex; justify-content: space-between;">
+                <button type="button" id="btn-detect-ip" class="btn-outline small-btn">🔄 Auto-Detect Wi-Fi IP</button>
+                <button type="button" id="btn-close-qr" class="btn-magical small-btn" data-i18n="btn_cancel">Done</button>
+            </div>
         </div>
     </div>
 
@@ -191,7 +207,7 @@
         </div>
     </div>
 
-    <script src="/static/js/i18n.js?v=20260826_03"></script>
-    <script src="/static/js/admin.js?v=20260826_03"></script>
+    <script src="/static/js/i18n.js?v=20260826_05"></script>
+    <script src="/static/js/admin.js?v=20260826_05"></script>
 </body>
 </html>
