@@ -35,12 +35,8 @@ class SSEManager:
         for q in dead_queues:
             self.subscribers.discard(q)
 
-    async def broadcast_reset(self):
-        """Broadcasts an event reset to reload all public screens."""
-        message = {
-            "type": "event_reset",
-            "data": {"message": "Event has been reset."}
-        }
+    async def broadcast(self, message: Dict[str, Any]):
+        """Broadcasts any arbitrary payload to all subscribers."""
         raw_msg = json.dumps(message)
         for queue in list(self.subscribers):
             try:
@@ -48,4 +44,21 @@ class SSEManager:
             except Exception:
                 self.subscribers.discard(queue)
 
+    async def broadcast_reset(self):
+        """Broadcasts an event reset to reload all public screens."""
+        message = {
+            "type": "event_reset",
+            "data": {"message": "Event has been reset."}
+        }
+        await self.broadcast(message)
+
+    async def broadcast_house_points(self, point_data: Dict[str, Any]):
+        """Broadcasts a live house points update to all public screens."""
+        message = {
+            "type": "house_points_update",
+            "data": point_data
+        }
+        await self.broadcast(message)
+
 sse_manager = SSEManager()
+

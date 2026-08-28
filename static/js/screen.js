@@ -36,11 +36,28 @@ class PublicScreen {
             });
         }
 
+        const pointsModal = document.getElementById("points-modal-stage");
+        if (pointsModal) {
+            pointsModal.addEventListener("click", () => {
+                this.dismissPointsModal();
+            });
+        }
+
         document.addEventListener("keydown", (e) => {
             if (e.key === "Escape" || e.key === " ") {
                 this.dismissCenterStage();
+                this.dismissPointsModal();
             }
         });
+    }
+
+    dismissPointsModal() {
+        if (this.pointsModalTimer) clearTimeout(this.pointsModalTimer);
+        const modal = document.getElementById("points-modal-stage");
+        if (modal) {
+            modal.style.display = "none";
+            modal.classList.add("hidden");
+        }
     }
 
     dismissCenterStage() {
@@ -79,7 +96,13 @@ class PublicScreen {
     renderHouseRoster(house) {
         const counterEl = document.getElementById(`counter-${house.code}`);
         if (counterEl) {
-            counterEl.textContent = house.total;
+            counterEl.textContent = `${house.total} 👥`;
+        }
+
+        const pointsEl = document.getElementById(`game-points-${house.code}`);
+        if (pointsEl) {
+            const ptsStr = (house.game_points % 1 === 0) ? house.game_points : Number(house.game_points).toFixed(1);
+            pointsEl.textContent = `${ptsStr} 🏆`;
         }
 
         const listEl = document.getElementById(`list-${house.code}`);
@@ -129,6 +152,8 @@ class PublicScreen {
                 const payload = JSON.parse(e.data);
                 if (payload.type === "assignment") {
                     this.enqueueAssignment(payload.data);
+                } else if (payload.type === "house_points_update") {
+                    this.handleHousePointsUpdate(payload.data || payload);
                 } else if (payload.type === "event_reset") {
                     // Reload all house data after admin reset
                     this.loadInitialHouses();
@@ -145,6 +170,53 @@ class PublicScreen {
             }
             // EventSource will automatically retry connection
         };
+    }
+
+    handleHousePointsUpdate(data) {
+        const ptsTotalStr = (data.total_game_points % 1 === 0) ? data.total_game_points : Number(data.total_game_points).toFixed(1);
+        const pointsEl = document.getElementById(`game-points-${data.house_code}`);
+        if (pointsEl) {
+            pointsEl.textContent = `${ptsTotalStr} 🏆`;
+            pointsEl.classList.add("pulse-points");
+            setTimeout(() => pointsEl.classList.remove("pulse-points"), 1500);
+        }
+
+        const icons = { "GRY": "🦁", "RAV": "🦅", "HUF": "🦡", "SLY": "🐍" };
+        const houseTheme = {
+            "GRY": { border: "#e53e3e", glow: "rgba(229, 62, 62, 0.6)" },
+            "RAV": { border: "#3182ce", glow: "rgba(49, 130, 206, 0.6)" },
+            "HUF": { border: "#d69e2e", glow: "rgba(214, 158, 46, 0.6)" },
+            "SLY": { border: "#38a169", glow: "rgba(56, 161, 105, 0.6)" }
+        };
+
+        const modalStage = document.getElementById("points-modal-stage");
+        const modalCrest = document.getElementById("points-modal-crest");
+        const modalAmount = document.getElementById("points-modal-amount");
+        const modalTitle = document.getElementById("points-modal-title");
+        const modalWizard = document.getElementById("points-modal-wizard");
+        const modalCard = document.getElementById("points-modal-card");
+
+        if (modalStage && modalCard) {
+            const theme = houseTheme[data.house_code] || { border: "var(--gold-primary)", glow: "var(--gold-glow)" };
+            modalCard.style.borderColor = theme.border;
+            modalCard.style.boxShadow = `0 0 60px ${theme.glow}, 0 25px 50px rgba(0, 0, 0, 0.9)`;
+
+            if (modalCrest) modalCrest.textContent = icons[data.house_code] || "✨";
+            const ptsAwardStr = (data.awarded_points % 1 === 0) ? data.awarded_points : Number(data.awarded_points).toFixed(1);
+            if (modalAmount) modalAmount.textContent = `+${ptsAwardStr} PTS`;
+            if (modalTitle) modalTitle.textContent = `${data.house_name} Wins House Cup Points!`;
+            if (modalWizard) modalWizard.textContent = `Cast by ${data.participant_name} ✨`;
+
+            modalStage.style.display = "flex";
+            modalStage.classList.remove("hidden");
+
+            if (this.pointsModalTimer) clearTimeout(this.pointsModalTimer);
+            this.pointsModalTimer = setTimeout(() => {
+                this.dismissPointsModal();
+            }, 3500);
+        }
+
+        this.playHouseFanfare();
     }
 
     enqueueAssignment(data) {

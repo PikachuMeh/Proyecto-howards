@@ -526,6 +526,236 @@ input:checked + .slider:before {
     border-radius: 6px;
 }
 
+/* Admin Navigation Tabs */
+.admin-tab-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 8px;
+}
+
+.admin-tab-btn {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    padding: 10px 20px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.admin-tab-btn:hover {
+    color: var(--text-light);
+    border-color: var(--gold-primary);
+    background: rgba(245, 197, 24, 0.08);
+}
+
+.admin-tab-btn.active {
+    background: var(--gold-primary);
+    color: #111;
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+}
+
+/* Question Manager */
+.questions-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.question-card {
+    background: rgba(18, 22, 38, 0.95);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    transition: border-color 0.2s ease;
+}
+
+.question-card:hover {
+    border-color: rgba(245, 197, 24, 0.6);
+}
+
+.question-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-bottom: 12px;
+}
+
+.question-number-badge {
+    background: rgba(245, 197, 24, 0.15);
+    border: 1px solid var(--gold-primary);
+    color: var(--gold-primary);
+    font-size: 0.85rem;
+    font-weight: bold;
+    padding: 4px 10px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.question-card-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.question-texts-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.question-text-row {
+    font-size: 1.05rem;
+    color: var(--text-light);
+    line-height: 1.4;
+}
+
+.question-text-row.de {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.question-options-preview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 10px;
+}
+
+.question-option-item {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.option-text-main {
+    font-size: 0.9rem;
+    color: #fff;
+    font-weight: 500;
+}
+
+.option-text-de {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.score-badge-list {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 2px;
+}
+
+.score-pill {
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.score-pill.gry { color: #fca5a5; border-color: rgba(239, 68, 68, 0.4); background: rgba(116, 0, 1, 0.3); }
+.score-pill.rav { color: #93c5fd; border-color: rgba(59, 130, 246, 0.4); background: rgba(14, 26, 64, 0.4); }
+.score-pill.huf { color: #fde047; border-color: rgba(234, 179, 8, 0.4); background: rgba(236, 185, 57, 0.3); }
+.score-pill.sly { color: #86efac; border-color: rgba(34, 197, 94, 0.4); background: rgba(26, 71, 42, 0.4); }
+
+/* Question Editor Modal */
+.question-modal-card {
+    max-width: 680px;
+    max-height: 90vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.options-form-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-height: 48vh;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.option-form-card {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.option-form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    color: var(--gold-primary);
+    font-size: 0.9rem;
+}
+
+.score-inputs-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.score-input-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.score-input-item.gry { color: #fca5a5; }
+.score-input-item.rav { color: #93c5fd; }
+.score-input-item.huf { color: #fde047; }
+.score-input-item.sly { color: #86efac; }
+
+.score-input {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-subtle);
+    color: #fff;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 0.95rem;
+    text-align: center;
+    width: 100%;
+    outline: none;
+}
+
+.score-input:focus {
+    border-color: var(--gold-primary);
+}
+
 /* Custom Confirmation Modal */
 .confirm-modal-card {
     text-align: center;

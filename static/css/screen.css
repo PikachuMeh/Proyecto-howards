@@ -171,23 +171,115 @@ body.screen-body {
     letter-spacing: 1px;
 }
 
+.house-counters-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .house-counter {
     font-family: var(--font-heading);
-    font-size: 1.8rem;
+    font-size: 1.2rem;
     font-weight: bold;
     background: rgba(0, 0, 0, 0.5);
-    padding: 4px 14px;
-    border-radius: 12px;
+    padding: 4px 10px;
+    border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    min-width: 45px;
+    min-width: 40px;
     text-align: center;
     transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.house-cup-badge {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 800;
+    padding: 4px 12px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 54px;
+    justify-content: center;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.35s ease;
+}
+
+.house-cup-badge.gry {
+    background: linear-gradient(135deg, rgba(160, 20, 20, 0.9), rgba(90, 10, 10, 0.95));
+    border: 1.5px solid #f87171;
+    color: #fee2e2;
+    text-shadow: 0 0 8px rgba(248, 113, 113, 0.8);
+}
+
+.house-cup-badge.rav {
+    background: linear-gradient(135deg, rgba(20, 50, 140, 0.9), rgba(10, 25, 80, 0.95));
+    border: 1.5px solid #60a5fa;
+    color: #dbeafe;
+    text-shadow: 0 0 8px rgba(96, 165, 250, 0.8);
+}
+
+.house-cup-badge.huf {
+    background: linear-gradient(135deg, rgba(180, 130, 10, 0.9), rgba(100, 70, 5, 0.95));
+    border: 1.5px solid #facc15;
+    color: #fef9c3;
+    text-shadow: 0 0 8px rgba(250, 204, 21, 0.8);
+}
+
+.house-cup-badge.sly {
+    background: linear-gradient(135deg, rgba(20, 120, 60, 0.9), rgba(10, 60, 30, 0.95));
+    border: 1.5px solid #4ade80;
+    color: #dcfce7;
+    text-shadow: 0 0 8px rgba(74, 222, 128, 0.8);
+}
+
+.house-cup-badge.pulse-points {
+    transform: scale(1.35);
+    box-shadow: 0 0 30px #f5c518;
 }
 
 .house-counter.bump {
     transform: scale(1.4);
     background: var(--gold-primary);
     color: #111;
+}
+
+/* Floating Live Points Toast Container */
+.screen-toast-container {
+    position: fixed;
+    top: 90px;
+    right: 24px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: none;
+}
+
+.screen-point-toast {
+    background: rgba(15, 12, 28, 0.95);
+    border: 2px solid var(--gold-primary);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(245, 197, 24, 0.5);
+    color: #fff;
+    padding: 14px 22px;
+    border-radius: 16px;
+    font-family: var(--font-heading);
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: toastSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, toastFadeOut 0.5s ease 3.5s forwards;
+}
+
+@keyframes toastSlideIn {
+    from { opacity: 0; transform: translateX(50px) scale(0.9); }
+    to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes toastFadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-20px); }
 }
 
 .house-students-container {
@@ -365,6 +457,103 @@ body.screen-body {
 @keyframes shoutReveal {
     0% { transform: scale(0.2); opacity: 0; }
     100% { transform: scale(1); opacity: 1; }
+}
+
+/* Center Stage Modal for House Points Award */
+.points-modal-stage {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 2500 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    animation: stageFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer;
+}
+
+.points-modal-stage.hidden {
+    display: none !important;
+}
+
+.points-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(4, 6, 14, 0.85);
+    backdrop-filter: blur(12px);
+}
+
+.points-modal-card {
+    position: relative;
+    z-index: 10;
+    background: linear-gradient(135deg, rgba(22, 27, 46, 0.98) 0%, rgba(11, 14, 26, 0.98) 100%);
+    border: 2.5px solid var(--gold-primary);
+    border-radius: 28px;
+    padding: 36px 48px;
+    max-width: 620px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 0 60px rgba(245, 197, 24, 0.5), 0 25px 50px rgba(0, 0, 0, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    animation: modalPopIn 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes modalPopIn {
+    0% { transform: scale(0.65); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.points-modal-crest {
+    font-size: clamp(3.5rem, 8vw, 5.5rem);
+    animation: crestBounce 1s ease-in-out infinite alternate;
+}
+
+@keyframes crestBounce {
+    from { transform: translateY(0) scale(1); }
+    to { transform: translateY(-8px) scale(1.08); }
+}
+
+.points-modal-amount {
+    font-family: var(--font-heading);
+    font-size: clamp(2.2rem, 6vw, 3.8rem);
+    font-weight: 900;
+    color: #fef08a;
+    text-shadow: 0 0 25px rgba(245, 197, 24, 0.9);
+    letter-spacing: 2px;
+    background: rgba(245, 197, 24, 0.18);
+    border: 2px solid var(--gold-primary);
+    padding: 8px 32px;
+    border-radius: 35px;
+}
+
+.points-modal-title {
+    font-family: var(--font-heading);
+    font-size: clamp(1.4rem, 4vw, 2.2rem);
+    color: #ffffff;
+    letter-spacing: 1px;
+}
+
+.points-modal-wizard {
+    font-size: clamp(1.05rem, 2.8vw, 1.4rem);
+    color: var(--text-light);
+    font-style: italic;
+    opacity: 0.95;
+}
+
+.points-modal-sparkles {
+    font-size: 1.6rem;
+    letter-spacing: 12px;
+    animation: sparkleGlow 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes sparkleGlow {
+    from { opacity: 0.6; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1.1); }
 }
 
 /* Flying Transition Animation (Section 9.4) */

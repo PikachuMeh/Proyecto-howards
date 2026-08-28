@@ -49,7 +49,8 @@ CREATE TABLE IF NOT EXISTS house (
     secondary_color CHAR(7) NOT NULL DEFAULT '#D3A625',
     motto_en VARCHAR(160),
     motto_de VARCHAR(160),
-    crest_icon VARCHAR(60)
+    crest_icon VARCHAR(60),
+    game_points INTEGER NOT NULL DEFAULT 0
 );
 
 -- 3. Question Table (Bilingual: EN / DE)
@@ -87,6 +88,7 @@ CREATE TABLE IF NOT EXISTS participant (
     display_name VARCHAR(40) NOT NULL,
     session_token VARCHAR(36) NOT NULL UNIQUE,
     preferred_lang VARCHAR(5) NOT NULL DEFAULT 'en',
+    password_hash VARCHAR(128) NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (event_id, display_name)
 );
@@ -122,14 +124,39 @@ CREATE TABLE IF NOT EXISTS administrator (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 10. House Game Point Transaction Table (House Cup)
+CREATE TABLE IF NOT EXISTS house_game_point (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL REFERENCES event(id) ON DELETE CASCADE,
+    participant_id INTEGER NOT NULL REFERENCES participant(id) ON DELETE CASCADE,
+    house_id INTEGER NOT NULL REFERENCES house(id) ON DELETE CASCADE,
+    points INTEGER NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indexes for performance and sorting queries
 CREATE INDEX IF NOT EXISTS idx_assignment_house ON assignment(house_id);
 CREATE INDEX IF NOT EXISTS idx_assignment_time ON assignment(assigned_at DESC);
 CREATE INDEX IF NOT EXISTS idx_answer_participant ON answer(participant_id);
 CREATE INDEX IF NOT EXISTS idx_admin_username ON administrator(username);
+CREATE INDEX IF NOT EXISTS idx_game_point_house ON house_game_point(house_id);
 """
 
 def init_db(db_path: Path = None):
-    """Initializes database tables and indexes."""
+    """Initializes database tables, indexes, and runs non-destructive schema migrations."""
     with get_db(db_path) as conn:
         conn.executescript(DDL_STATEMENTS)
+        
+        cursor = conn.cursor()
+        # Schema migration check: ensure password_hash column exists in participant table
+        cursor.execute("PRAGMA table_info(participant)")
+        p_cols = [row["name"] for row in cursor.fetchall()]
+        if p_cols and "password_hash" not in p_cols:
+            cursor.execute("ALTER TABLE participant ADD COLUMN password_hash VARCHAR(128) NULL")
+
+        # Schema migration check: ensure game_points column exists in house table
+        cursor.execute("PRAGMA table_info(house)")
+        h_cols = [row["name"] for row in cursor.fetchall()]
+        if h_cols and "game_points" not in h_cols:
+            cursor.execute("ALTER TABLE house ADD COLUMN game_points INTEGER NOT NULL DEFAULT 0")
+

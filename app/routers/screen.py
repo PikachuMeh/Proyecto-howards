@@ -20,10 +20,10 @@ def get_houses(lang: str = "en"):
                    CASE WHEN ? = 'de' THEN h.name_de ELSE h.name_en END as name,
                    h.color_hex, h.secondary_color,
                    CASE WHEN ? = 'de' THEN h.motto_de ELSE h.motto_en END as motto,
-                   h.crest_icon, COUNT(a.id) as total
+                   h.crest_icon, h.game_points, COUNT(a.id) as total
             FROM house h
             LEFT JOIN assignment a ON a.house_id = h.id
-            GROUP BY h.id, h.code, h.name_en, h.name_de, h.color_hex, h.secondary_color, h.motto_en, h.motto_de, h.crest_icon
+            GROUP BY h.id, h.code, h.name_en, h.name_de, h.color_hex, h.secondary_color, h.motto_en, h.motto_de, h.crest_icon, h.game_points
             ORDER BY h.id ASC
         """, (lang, lang))
         houses = [dict(h) for h in cursor.fetchall()]

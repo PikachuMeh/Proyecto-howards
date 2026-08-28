@@ -29,22 +29,86 @@ class GuestApp {
         }
 
         // Navigation buttons
-        document.getElementById("btn-prev").addEventListener("click", () => this.handlePrev());
-        document.getElementById("btn-next").addEventListener("click", () => this.handleNext());
-        document.getElementById("btn-submit-sorting").addEventListener("click", () => this.handleFinalSubmit());
-        document.getElementById("btn-toggle-breakdown").addEventListener("click", () => {
-            const box = document.getElementById("score-breakdown-container");
-            box.classList.toggle("hidden");
-        });
+        const prevBtn = document.getElementById("btn-prev");
+        if (prevBtn) prevBtn.addEventListener("click", () => this.handlePrev());
+
+        const nextBtn = document.getElementById("btn-next");
+        if (nextBtn) nextBtn.addEventListener("click", () => this.handleNext());
+
+        const submitBtn = document.getElementById("btn-submit-sorting");
+        if (submitBtn) submitBtn.addEventListener("click", () => this.handleFinalSubmit());
+
+        const breakdownBtn = document.getElementById("btn-toggle-breakdown");
+        if (breakdownBtn) {
+            breakdownBtn.addEventListener("click", () => {
+                const box = document.getElementById("score-breakdown-container");
+                if (box) box.classList.toggle("hidden");
+            });
+        }
+
+        // House Games buttons
+        const openGamesBtn = document.getElementById("btn-open-games");
+        if (openGamesBtn) openGamesBtn.addEventListener("click", () => this.openHouseGames());
+
+        const gotoGamesBtn = document.getElementById("btn-goto-games");
+        if (gotoGamesBtn) gotoGamesBtn.addEventListener("click", () => this.openHouseGames());
+
+        const closeGamesBtn = document.getElementById("btn-close-games");
+        if (closeGamesBtn) closeGamesBtn.addEventListener("click", () => this.closeHouseGames());
+
+        const playGameBtn = document.getElementById("btn-play-game");
+        if (playGameBtn) playGameBtn.addEventListener("click", () => this.playHouseGame());
+
+        const gamesLoginForm = document.getElementById("form-games-login");
+        if (gamesLoginForm) {
+            gamesLoginForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+                this.handleGamesLogin();
+            });
+        }
+
+        // Sort Another Wizard buttons
+        const sortAnotherHeader = document.getElementById("btn-header-sort-another");
+        if (sortAnotherHeader) sortAnotherHeader.addEventListener("click", () => this.sortAnotherWizard());
+
+        const sortAnotherResult = document.getElementById("btn-result-sort-another");
+        if (sortAnotherResult) sortAnotherResult.addEventListener("click", () => this.sortAnotherWizard());
+
+        // Close modal on backdrop click
+        const gamesModal = document.getElementById("modal-house-games");
+        if (gamesModal) {
+            gamesModal.addEventListener("click", (e) => {
+                if (e.target === gamesModal) this.closeHouseGames();
+            });
+        }
 
         // Language change event listener
         window.addEventListener("langchange", async (e) => {
-            if (this.questions.length > 0) {
-                await this.loadQuestions();
-                this.renderCurrentQuestion();
-            }
             if (this.assignment) {
                 await this.fetchMyAssignment();
+            } else if (this.questions && this.questions.length > 0) {
+                try {
+                    const lang = window.i18n.getLang();
+                    const res = await fetch(`/api/questions?lang=${lang}&randomize=false`);
+                    if (res.ok) {
+                        const fresh = await res.json();
+                        const qMap = {};
+                        fresh.forEach(q => { qMap[q.id] = q; });
+                        this.questions.forEach(q => {
+                            if (qMap[q.id]) {
+                                q.text = qMap[q.id].text;
+                                const optMap = {};
+                                qMap[q.id].options.forEach(o => { optMap[o.id] = o.text; });
+                                q.options.forEach(o => {
+                                    if (optMap[o.id]) o.text = optMap[o.id];
+                                });
+                            }
+                        });
+                        this.renderCurrentQuestion();
+                    }
+                } catch (err) {
+                    console.error("Error refreshing question language", err);
+                }
             }
         });
     }
@@ -102,11 +166,18 @@ class GuestApp {
 
     async handleRegister() {
         const nameInput = document.getElementById("display-name");
-        const name = nameInput.value.trim();
+        const passInput = document.getElementById("participant-password");
+        const name = nameInput ? nameInput.value.trim() : "";
+        const password = passInput ? passInput.value.trim() : "";
         this.clearError("register-error");
 
         if (name.length < 2 || name.length > 40) {
             this.showError("register-error", window.i18n.t("err_name_required"));
+            return;
+        }
+
+        if (!password || password.length < 3) {
+            this.showError("register-error", window.i18n.t("err_password_required"));
             return;
         }
 
@@ -119,22 +190,32 @@ class GuestApp {
         }
 
         const btn = document.getElementById("btn-start");
-        btn.disabled = true;
+        if (btn) btn.disabled = true;
 
         try {
             const lang = window.i18n.getLang();
             const res = await fetch("/api/participants", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ display_name: name, preferred_lang: lang })
+                body: JSON.stringify({ display_name: name, preferred_lang: lang, password: password })
             });
 
             const data = await res.json();
-            if (res.status === 201) {
+            if (res.status === 200 || res.status === 201) {
+                // Clear the form fields immediately upon registration
+                if (nameInput) nameInput.value = "";
+                if (passInput) passInput.value = "";
+
                 this.participant = data;
                 this.sessionToken = data.session_token;
-                await this.loadQuestions();
-                this.showStep("step-questionnaire");
+
+                if (data.has_assignment) {
+                    await this.fetchMyAssignment();
+                } else {
+                    await this.loadQuestions();
+                    await this.loadSavedAnswers();
+                    this.showStep("step-questionnaire");
+                }
             } else {
                 let msg = data.detail || "Registration failed";
                 if (res.status === 400 && typeof data.detail === "string" && data.detail.includes("already registered")) {
@@ -145,9 +226,10 @@ class GuestApp {
                 this.showError("register-error", msg);
             }
         } catch (err) {
-            this.showError("register-error", "Network connection error. Please try again.");
+            console.error("handleRegister error:", err);
+            this.showError("register-error", "Registration error. Please try again.");
         } finally {
-            btn.disabled = false;
+            if (btn) btn.disabled = false;
         }
     }
 
@@ -225,13 +307,13 @@ class GuestApp {
         const nextBtn = document.getElementById("btn-next");
         const submitBtn = document.getElementById("btn-submit-sorting");
 
-        prevBtn.disabled = this.currentIndex === 0;
+        if (prevBtn) prevBtn.disabled = this.currentIndex === 0;
         if (this.currentIndex === total - 1) {
-            nextBtn.classList.add("hidden");
-            submitBtn.classList.remove("hidden");
+            if (nextBtn) nextBtn.classList.add("hidden");
+            if (submitBtn) submitBtn.classList.remove("hidden");
         } else {
-            nextBtn.classList.remove("hidden");
-            submitBtn.classList.add("hidden");
+            if (nextBtn) nextBtn.classList.remove("hidden");
+            if (submitBtn) submitBtn.classList.add("hidden");
         }
     }
 
@@ -357,6 +439,10 @@ class GuestApp {
         card.style.boxShadow = `0 0 35px ${theme.glow}`;
         card.style.background = `linear-gradient(180deg, ${theme.bg} 0%, rgba(11, 14, 26, 0.95) 100%)`;
 
+        // Show header sort another button
+        const headerSortBtn = document.getElementById("btn-header-sort-another");
+        if (headerSortBtn) headerSortBtn.classList.remove("hidden");
+
         // Render score breakdown
         const breakdownContainer = document.getElementById("score-breakdown-container");
         breakdownContainer.innerHTML = "";
@@ -386,6 +472,235 @@ class GuestApp {
             `;
             breakdownContainer.appendChild(row);
         }
+    }
+
+    async openHouseGames() {
+        const modal = document.getElementById("modal-house-games");
+        if (!modal) return;
+        modal.style.display = "flex";
+        modal.classList.remove("hidden");
+
+        const authView = document.getElementById("games-auth-view");
+        const unauthView = document.getElementById("games-unauth-view");
+        const resultBox = document.getElementById("game-play-result");
+        if (resultBox) resultBox.classList.add("hidden");
+
+        if (this.participant && this.assignment) {
+            authView.classList.remove("hidden");
+            unauthView.classList.add("hidden");
+
+            const icons = { "GRY": "🦁", "RAV": "🦅", "HUF": "🦡", "SLY": "🐍" };
+            document.getElementById("games-house-crest").textContent = icons[this.assignment.house_code] || "✨";
+            document.getElementById("games-house-name").textContent = this.assignment.house_name;
+            document.getElementById("games-wizard-name").textContent = this.participant.display_name;
+
+            // Update casts count
+            const castCountEl = document.getElementById("games-cast-count");
+            const btn = document.getElementById("btn-play-game");
+            const used = this.participant.casts_used || 0;
+            if (castCountEl) castCountEl.textContent = used;
+
+            if (used >= 2) {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = "🔒 Max Spells Cast (2/2)";
+                }
+            } else {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = `🎲 Cast Magical Spell (${used}/2) ✨`;
+                }
+            }
+
+            // Fetch latest house points & me data
+            try {
+                const meRes = await fetch("/api/me");
+                if (meRes.ok) {
+                    const meData = await meRes.json();
+                    this.participant.casts_used = meData.casts_used;
+                    this.participant.casts_remaining = meData.casts_remaining;
+                    if (castCountEl) castCountEl.textContent = meData.casts_used;
+                    if (btn) {
+                        if (meData.casts_used >= 2) {
+                            btn.disabled = true;
+                            btn.textContent = "🔒 Max Spells Cast (2/2)";
+                        } else {
+                            btn.disabled = false;
+                            btn.textContent = `🎲 Cast Magical Spell (${meData.casts_used}/2) ✨`;
+                        }
+                    }
+                }
+
+                const res = await fetch("/api/houses");
+                if (res.ok) {
+                    const houses = await res.json();
+                    const myH = houses.find(h => h.code === this.assignment.house_code);
+                    if (myH) {
+                        const ptsStr = (myH.game_points % 1 === 0) ? myH.game_points : myH.game_points.toFixed(1);
+                        document.getElementById("games-house-total-points").textContent = `${ptsStr} 🏆`;
+                    }
+                }
+            } catch (e) {}
+        } else {
+            authView.classList.add("hidden");
+            unauthView.classList.remove("hidden");
+        }
+    }
+
+    closeHouseGames() {
+        const modal = document.getElementById("modal-house-games");
+        if (modal) {
+            modal.style.display = "none";
+            modal.classList.add("hidden");
+        }
+    }
+
+    async playHouseGame() {
+        const btn = document.getElementById("btn-play-game");
+        const orb = document.getElementById("games-orb");
+        const resultBox = document.getElementById("game-play-result");
+        const castCountEl = document.getElementById("games-cast-count");
+
+        if (btn) btn.disabled = true;
+        if (orb) orb.style.transform = "scale(1.3) rotate(360deg)";
+
+        try {
+            const res = await fetch("/api/house-games/play", {
+                method: "POST"
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                this.participant.casts_used = data.casts_used;
+                this.participant.casts_remaining = data.casts_remaining;
+
+                if (castCountEl) castCountEl.textContent = data.casts_used;
+
+                const ptsStr = (data.total_game_points % 1 === 0) ? data.total_game_points : data.total_game_points.toFixed(1);
+                document.getElementById("games-house-total-points").textContent = `${ptsStr} 🏆`;
+                
+                if (resultBox) {
+                    resultBox.textContent = data.message;
+                    resultBox.classList.remove("hidden");
+                }
+
+                if (data.casts_remaining <= 0) {
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.textContent = "🔒 Max Spells Cast (2/2)";
+                    }
+                } else {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = `🎲 Cast Magical Spell (${data.casts_used}/2) ✨`;
+                    }
+                }
+
+                this.playFanfare();
+            } else {
+                const err = await res.json().catch(() => ({}));
+                if (resultBox) {
+                    resultBox.textContent = err.detail || "Unable to play House Games.";
+                    resultBox.classList.remove("hidden");
+                }
+                if (err.detail && err.detail.includes("maximum spells")) {
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.textContent = "🔒 Max Spells Cast (2/2)";
+                    }
+                    if (castCountEl) castCountEl.textContent = "2";
+                }
+            }
+        } catch (e) {
+            if (resultBox) {
+                resultBox.textContent = "Network error. Please try again.";
+                resultBox.classList.remove("hidden");
+            }
+        } finally {
+            if (orb) orb.style.transform = "none";
+            setTimeout(() => {
+                if (btn && (this.participant.casts_used < 2)) btn.disabled = false;
+            }, 800);
+        }
+    }
+
+    async handleGamesLogin() {
+        const nameInput = document.getElementById("games-login-name");
+        const passInput = document.getElementById("games-login-password");
+        const name = nameInput ? nameInput.value.trim() : "";
+        const password = passInput ? passInput.value.trim() : "";
+        this.clearError("games-login-error");
+
+        if (name.length < 2) {
+            this.showError("games-login-error", window.i18n.t("err_name_required"));
+            return;
+        }
+        if (!password || password.length < 3) {
+            this.showError("games-login-error", window.i18n.t("err_password_required"));
+            return;
+        }
+
+        const btn = document.getElementById("btn-games-login-submit");
+        if (btn) btn.disabled = true;
+
+        try {
+            const lang = window.i18n.getLang();
+            const res = await fetch("/api/participants", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ display_name: name, preferred_lang: lang, password: password })
+            });
+
+            const data = await res.json();
+            if (res.status === 200 || res.status === 201) {
+                if (nameInput) nameInput.value = "";
+                if (passInput) passInput.value = "";
+
+                this.participant = data;
+                this.sessionToken = data.session_token;
+
+                if (data.has_assignment) {
+                    await this.fetchMyAssignment();
+                    await this.openHouseGames();
+                } else {
+                    this.closeHouseGames();
+                    await this.loadQuestions();
+                    await this.loadSavedAnswers();
+                    this.showStep("step-questionnaire");
+                }
+            } else {
+                this.showError("games-login-error", data.detail || "Login failed.");
+            }
+        } catch (e) {
+            this.showError("games-login-error", "Network connection error.");
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    async sortAnotherWizard() {
+        try {
+            await fetch("/api/participants/logout", { method: "POST" });
+        } catch (e) {}
+
+        this.participant = null;
+        this.sessionToken = null;
+        this.assignment = null;
+        this.questions = [];
+        this.currentIndex = 0;
+        this.selectedAnswers = {};
+
+        const headerBtn = document.getElementById("btn-header-sort-another");
+        if (headerBtn) headerBtn.classList.add("hidden");
+
+        const nameInput = document.getElementById("display-name");
+        const passInput = document.getElementById("participant-password");
+        if (nameInput) nameInput.value = "";
+        if (passInput) passInput.value = "";
+        this.clearError("register-error");
+
+        this.closeHouseGames();
+        this.showStep("step-register");
     }
 
     playMagicalHum() {

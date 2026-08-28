@@ -5,7 +5,10 @@ from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, Header, Cookie, Response, status
 from fastapi.responses import StreamingResponse
 from app.database import get_db
-from app.models import AdminLogin, AdminReassign, AdminEventSettings, AdminProfileOut
+from app.models import (
+    AdminLogin, AdminReassign, AdminEventSettings, AdminProfileOut,
+    AdminParticipantPointsUpdate, QuestionIn, OptionIn, QuestionDetailOut
+)
 from app.auth import verify_password, create_admin_session, get_admin_session, destroy_admin_session
 from app.sse_manager import sse_manager
 
@@ -157,7 +160,9 @@ def list_participants(lang: str = "en"):
                    h.code as house_code,
                    CASE WHEN ? = 'de' THEN h.name_de ELSE h.name_en END as house_name,
                    h.color_hex,
-                   (SELECT COUNT(*) FROM answer an WHERE an.participant_id = p.id) as answered_questions
+                   (SELECT COUNT(*) FROM answer an WHERE an.participant_id = p.id) as answered_questions,
+                   (SELECT COUNT(*) FROM house_game_point gp WHERE gp.participant_id = p.id) as spells_cast,
+                   (SELECT COALESCE(SUM(points), 0) FROM house_game_point gp WHERE gp.participant_id = p.id) as spell_points_won
             FROM participant p
             LEFT JOIN assignment a ON a.participant_id = p.id
             LEFT JOIN house h ON h.id = a.house_id
@@ -222,6 +227,110 @@ async def manual_reassign(participant_id: int, data: AdminReassign):
 
     return {"status": "success", "message": f"Participant reassigned to {house['name_en']}."}
 
+@router.patch("/participants/{participant_id}/points", dependencies=[Depends(verify_admin)])
+async def update_participant_points(participant_id: int, data: AdminParticipantPointsUpdate):
+    """
+    Allows administrator to directly view and edit a participant's points:
+    - House Cup Points (updates house_game_point transactions and recalibrates house total)
+    - Sorting Ceremony Score (updates assignment total_score)
+    - Spells Cast attempts (allows resetting or adjusting cast limits)
+    Broadcasts live updates to /screen via SSE.
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+
+        # 1. Verify participant
+        cursor.execute("""
+            SELECT p.id, p.display_name, p.event_id, a.house_id, h.code as house_code, h.name_en as house_name
+            FROM participant p
+            LEFT JOIN assignment a ON a.participant_id = p.id
+            LEFT JOIN house h ON h.id = a.house_id
+            WHERE p.id = ?
+        """, (participant_id,))
+        participant = cursor.fetchone()
+        if not participant:
+            raise HTTPException(status_code=404, detail="Participant not found.")
+
+        house_id = participant["house_id"]
+        event_id = participant["event_id"]
+
+        # 2. Update Sorting Ceremony Score
+        if data.sorting_score is not None:
+            if house_id:
+                cursor.execute("""
+                    UPDATE assignment
+                    SET total_score = ?, manual_override = 1
+                    WHERE participant_id = ?
+                """, (data.sorting_score, participant_id))
+
+        # 3. Update House Cup Points and Spells Cast
+        new_house_points = 0.0
+        if house_id is not None:
+            # Check current stats
+            cursor.execute("""
+                SELECT COUNT(*) as cnt, COALESCE(SUM(points), 0) as total_pts
+                FROM house_game_point
+                WHERE participant_id = ? AND event_id = ?
+            """, (participant_id, event_id))
+            current_stats = cursor.fetchone()
+            current_pts = float(current_stats["total_pts"]) if current_stats else 0.0
+            current_casts = current_stats["cnt"] if current_stats else 0
+
+            target_pts = data.game_points if data.game_points is not None else current_pts
+            target_casts = data.spells_cast if data.spells_cast is not None else (1 if target_pts > 0 and current_casts == 0 else current_casts)
+
+            # Re-record house_game_point entries for this participant
+            cursor.execute("""
+                DELETE FROM house_game_point
+                WHERE participant_id = ? AND event_id = ?
+            """, (participant_id, event_id))
+
+            if target_casts > 0 and target_pts > 0:
+                pts_per_cast = round(target_pts / target_casts, 2)
+                for i in range(target_casts):
+                    pts = pts_per_cast if i < target_casts - 1 else round(target_pts - pts_per_cast * (target_casts - 1), 2)
+                    cursor.execute("""
+                        INSERT INTO house_game_point (event_id, participant_id, house_id, points)
+                        VALUES (?, ?, ?, ?)
+                    """, (event_id, participant_id, house_id, pts))
+            elif target_casts > 0 and target_pts == 0:
+                for _ in range(target_casts):
+                    cursor.execute("""
+                        INSERT INTO house_game_point (event_id, participant_id, house_id, points)
+                        VALUES (?, ?, ?, 0)
+                    """, (event_id, participant_id, house_id))
+
+            # Recalibrate house total game_points
+            cursor.execute("""
+                UPDATE house
+                SET game_points = (
+                    SELECT COALESCE(SUM(points), 0)
+                    FROM house_game_point
+                    WHERE house_id = house.id
+                )
+                WHERE id = ?
+            """, (house_id,))
+
+            # Read new total for house
+            cursor.execute("SELECT game_points FROM house WHERE id = ?", (house_id,))
+            new_house_points = float(cursor.fetchone()["game_points"])
+
+    # 4. Broadcast live update to /screen via SSE if house is assigned
+    if house_id:
+        await sse_manager.broadcast_house_points({
+            "house_id": house_id,
+            "house_code": participant["house_code"],
+            "house_name": participant["house_name"],
+            "participant_name": participant["display_name"],
+            "awarded_points": data.game_points if data.game_points is not None else 0,
+            "total_game_points": new_house_points
+        })
+
+    return {
+        "status": "success",
+        "message": f"Points updated for {participant['display_name']}."
+    }
+
 @router.delete("/participants/{participant_id}", dependencies=[Depends(verify_admin)])
 async def delete_participant(participant_id: int):
     with get_db() as conn:
@@ -243,11 +352,13 @@ async def reset_event():
         cursor = conn.cursor()
         cursor.execute("DELETE FROM assignment")
         cursor.execute("DELETE FROM answer")
+        cursor.execute("DELETE FROM house_game_point")
         cursor.execute("DELETE FROM participant")
+        cursor.execute("UPDATE house SET game_points = 0")
 
     # Broadcast reset to refresh all connected public screens
     await sse_manager.broadcast_reset()
-    return {"status": "success", "message": "Event reset successfully. All assignments cleared."}
+    return {"status": "success", "message": "Event reset successfully. All assignments and house cup points cleared."}
 
 @router.post("/auto-balance", dependencies=[Depends(verify_admin)])
 async def auto_balance_houses():
@@ -419,6 +530,21 @@ def get_closing_stats():
                         "options_chosen": len(counts)
                     }
 
+        # 5. House Game Points & Spell Casting Statistics
+        cursor.execute("SELECT COUNT(*) as cnt, COALESCE(SUM(points), 0) as total_pts FROM house_game_point")
+        spell_summary = cursor.fetchone()
+        total_spells_cast = spell_summary["cnt"] if spell_summary else 0
+        total_spell_points = float(spell_summary["total_pts"]) if spell_summary else 0.0
+
+        # House Game Points breakdown by House
+        cursor.execute("""
+            SELECT h.id, h.code, h.name_en, h.name_de, h.color_hex, h.crest_icon, h.game_points,
+                   (SELECT COUNT(*) FROM house_game_point gp WHERE gp.house_id = h.id) as spells_cast
+            FROM house h
+            ORDER BY h.game_points DESC
+        """)
+        house_spell_stats = [dict(r) for r in cursor.fetchall()]
+
     largest_house = houses[0] if houses and houses[0]["total"] > 0 else None
 
     return {
@@ -427,5 +553,148 @@ def get_closing_stats():
         "largest_house": largest_house,
         "house_distribution": houses,
         "incomplete_participants": incomplete_participants,
-        "most_divisive_question": most_divisive
+        "most_divisive_question": most_divisive,
+        "total_spells_cast": total_spells_cast,
+        "total_spell_points": total_spell_points,
+        "house_spell_stats": house_spell_stats
     }
+
+# --- Question Management Endpoints (CRUD) ---
+
+@router.get("/questions", dependencies=[Depends(verify_admin)])
+def admin_get_questions():
+    """Returns all questions with options and house score breakdown for administration."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM event WHERE active = 1 ORDER BY id DESC LIMIT 1")
+        event = cursor.fetchone()
+        if not event:
+            return []
+
+        cursor.execute("""
+            SELECT id, text_en, text_de, position
+            FROM question
+            WHERE event_id = ?
+            ORDER BY position ASC, id ASC
+        """, (event["id"],))
+        questions = [dict(q) for q in cursor.fetchall()]
+
+        cursor.execute("SELECT id, code FROM house")
+        house_map = {row["id"]: row["code"] for row in cursor.fetchall()}
+
+        for q in questions:
+            cursor.execute("""
+                SELECT id, text_en, text_de, position
+                FROM option
+                WHERE question_id = ?
+                ORDER BY position ASC, id ASC
+            """, (q["id"],))
+            options = [dict(opt) for opt in cursor.fetchall()]
+
+            for opt in options:
+                cursor.execute("""
+                    SELECT house_id, points
+                    FROM option_score
+                    WHERE option_id = ?
+                """, (opt["id"],))
+                scores = {"GRY": 0, "RAV": 0, "HUF": 0, "SLY": 0}
+                for s in cursor.fetchall():
+                    h_code = house_map.get(s["house_id"])
+                    if h_code:
+                        scores[h_code] = s["points"]
+                opt["scores"] = scores
+
+            q["options"] = options
+
+    return questions
+
+@router.post("/questions", status_code=status.HTTP_201_CREATED, dependencies=[Depends(verify_admin)])
+def admin_create_question(data: QuestionIn):
+    """Creates a new question with options and validated scores (0 to 10 points)."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM event WHERE active = 1 ORDER BY id DESC LIMIT 1")
+        event = cursor.fetchone()
+        if not event:
+            raise HTTPException(status_code=400, detail="No active event found.")
+        event_id = event["id"]
+
+        cursor.execute("SELECT id, code FROM house")
+        house_code_to_id = {row["code"]: row["id"] for row in cursor.fetchall()}
+
+        cursor.execute("SELECT COALESCE(MAX(position), 0) + 1 as next_pos FROM question WHERE event_id = ?", (event_id,))
+        next_pos = cursor.fetchone()["next_pos"]
+
+        cursor.execute("""
+            INSERT INTO question (event_id, text_en, text_de, position)
+            VALUES (?, ?, ?, ?)
+        """, (event_id, data.text_en.strip(), data.text_de.strip(), next_pos))
+        question_id = cursor.lastrowid
+
+        for idx, opt in enumerate(data.options, start=1):
+            cursor.execute("""
+                INSERT INTO option (question_id, text_en, text_de, position)
+                VALUES (?, ?, ?, ?)
+            """, (question_id, opt.text_en.strip(), opt.text_de.strip(), idx))
+            option_id = cursor.lastrowid
+
+            for house_code, points in opt.scores.items():
+                if house_code in house_code_to_id:
+                    cursor.execute("""
+                        INSERT INTO option_score (option_id, house_id, points)
+                        VALUES (?, ?, ?)
+                    """, (option_id, house_code_to_id[house_code], max(0, min(10, points))))
+
+    return {"status": "success", "question_id": question_id, "message": "Question created successfully."}
+
+@router.put("/questions/{question_id}", dependencies=[Depends(verify_admin)])
+def admin_update_question(question_id: int, data: QuestionIn):
+    """Updates an existing question, replacing its options and scores."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, event_id FROM question WHERE id = ?", (question_id,))
+        q_row = cursor.fetchone()
+        if not q_row:
+            raise HTTPException(status_code=404, detail="Question not found.")
+
+        cursor.execute("SELECT id, code FROM house")
+        house_code_to_id = {row["code"]: row["id"] for row in cursor.fetchall()}
+
+        cursor.execute("""
+            UPDATE question
+            SET text_en = ?, text_de = ?
+            WHERE id = ?
+        """, (data.text_en.strip(), data.text_de.strip(), question_id))
+
+        cursor.execute("DELETE FROM option WHERE question_id = ?", (question_id,))
+
+        for idx, opt in enumerate(data.options, start=1):
+            cursor.execute("""
+                INSERT INTO option (question_id, text_en, text_de, position)
+                VALUES (?, ?, ?, ?)
+            """, (question_id, opt.text_en.strip(), opt.text_de.strip(), idx))
+            option_id = cursor.lastrowid
+
+            for house_code, points in opt.scores.items():
+                if house_code in house_code_to_id:
+                    cursor.execute("""
+                        INSERT INTO option_score (option_id, house_id, points)
+                        VALUES (?, ?, ?)
+                    """, (option_id, house_code_to_id[house_code], max(0, min(10, points))))
+
+    return {"status": "success", "question_id": question_id, "message": "Question updated successfully."}
+
+@router.delete("/questions/{question_id}", dependencies=[Depends(verify_admin)])
+def admin_delete_question(question_id: int):
+    """Deletes a question, cascading to options, scores, and answers."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, event_id FROM question WHERE id = ?", (question_id,))
+        q_row = cursor.fetchone()
+        if not q_row:
+            raise HTTPException(status_code=404, detail="Question not found.")
+
+        cursor.execute("DELETE FROM question WHERE id = ?", (question_id,))
+
+    return {"status": "success", "message": "Question deleted successfully."}
+

@@ -433,8 +433,176 @@
     transition: width 0.6s ease;
 }
 
-.result-footer {
-    margin-top: 24px;
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-games-nav {
+    background: linear-gradient(135deg, rgba(245, 197, 24, 0.25), rgba(116, 0, 1, 0.35)) !important;
+    border: 1.5px solid var(--gold-primary) !important;
+    color: #fef08a !important;
+    font-family: var(--font-heading) !important;
+    font-size: 0.85rem !important;
+    font-weight: 700 !important;
+    padding: 6px 14px !important;
+    min-height: 36px !important;
+    border-radius: 20px !important;
+    cursor: pointer !important;
+    transition: all 0.25s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    text-shadow: 0 0 8px rgba(245, 197, 24, 0.5) !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5) !important;
+}
+
+.btn-games-nav:hover {
+    background: var(--gold-primary) !important;
+    color: #111 !important;
+    box-shadow: 0 0 20px var(--gold-glow) !important;
+    transform: translateY(-1px) !important;
+}
+
+.btn-logout-nav {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    color: var(--text-light) !important;
+    font-family: var(--font-body) !important;
+    font-size: 0.8rem !important;
+    padding: 6px 12px !important;
+    min-height: 36px !important;
+    border-radius: 20px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+.btn-logout-nav:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* House Games Modal */
+.house-games-dialog {
+    max-width: 480px;
+    width: 90%;
+    background: var(--bg-card);
+    border: 1px solid var(--border-gold);
+    border-radius: 20px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.9), 0 0 30px rgba(245, 197, 24, 0.2);
+    padding: 24px;
+    animation: modalScaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.games-house-banner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+}
+
+.games-crest {
+    font-size: 2.4rem;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6));
+}
+
+.games-house-title {
+    font-family: var(--font-heading);
+    font-size: 1.4rem;
+    margin: 0;
+    color: var(--gold-light);
+}
+
+.games-wizard-name {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.house-points-counter-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, rgba(211, 166, 37, 0.15), rgba(0, 0, 0, 0.5));
+    border: 1px solid rgba(211, 166, 37, 0.4);
+    border-radius: 12px;
+    padding: 12px 18px;
+    margin-bottom: 16px;
+}
+
+.points-label {
+    font-family: var(--font-heading);
+    font-size: 0.95rem;
+    color: var(--text-light);
+}
+
+.points-large-badge {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--gold-primary);
+    text-shadow: 0 0 10px var(--gold-glow);
+}
+
+.games-arena-card {
+    text-align: center;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px dashed rgba(211, 166, 37, 0.4);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.magic-orb {
+    font-size: 3.5rem;
+    animation: orbFloat 3s infinite ease-in-out;
+    filter: drop-shadow(0 0 15px rgba(245, 197, 24, 0.6));
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.magic-orb:hover {
+    transform: scale(1.15) rotate(10deg);
+}
+
+@keyframes orbFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+.games-cast-badge {
+    display: inline-block;
+    background: rgba(245, 197, 24, 0.12);
+    border: 1px solid var(--gold-border);
+    color: #fef08a;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 20px;
+}
+
+.game-result-box {
+    background: rgba(74, 222, 128, 0.15);
+    border: 1.5px solid #4ade80;
+    color: #dcfce7;
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    padding: 10px 18px;
+    border-radius: 12px;
+    text-shadow: 0 0 8px rgba(74, 222, 128, 0.8);
+    animation: resultPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes resultPop {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
 }
 
 .app-footer {

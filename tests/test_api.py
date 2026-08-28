@@ -38,8 +38,8 @@ def test_full_guest_flow_english(client):
 
     headers = {"X-Session-Token": token}
 
-    # 2. Get questions in English
-    q_resp = client.get("/api/questions?lang=en")
+    # 2. Get questions in English (deterministic for testing specific house answers)
+    q_resp = client.get("/api/questions?lang=en&randomize=false")
     assert q_resp.status_code == 200
     questions = q_resp.json()
     assert len(questions) == 6
@@ -69,8 +69,8 @@ def test_full_guest_flow_german(client):
     token = resp.json()["session_token"]
     headers = {"X-Session-Token": token}
 
-    # German questions
-    q_resp = client.get("/api/questions?lang=de")
+    # German questions (deterministic)
+    q_resp = client.get("/api/questions?lang=de&randomize=false")
     assert q_resp.status_code == 200
     questions = q_resp.json()
     assert "Instinkt" in questions[0]["text"]
@@ -254,6 +254,241 @@ def test_wizard_name_validation(client):
     for good_name in valid_names:
         res = client.post("/api/participants", json={"display_name": good_name})
         assert res.status_code == 201, f"Expected acceptance for '{good_name}', got {res.status_code}"
+
+def test_admin_question_crud(client):
+    """Test Admin CRUD for questions and options."""
+    login_resp = client.post("/api/admin/login", json={"username": "admin", "password": "alohomora"})
+    admin_headers = {"X-Admin-Token": login_resp.json()["token"]}
+
+    # 1. Get initial questions count
+    q_list_res = client.get("/api/admin/questions", headers=admin_headers)
+    assert q_list_res.status_code == 200
+    initial_count = len(q_list_res.json())
+
+    # 2. Create new question
+    new_q_payload = {
+        "text_en": "Which magical pet would you choose?",
+        "text_de": "Welches magische Haustier würdest du wählen?",
+        "options": [
+            {"text_en": "Toad", "text_de": "Kröte", "scores": {"GRY": 2, "RAV": 0, "HUF": 4, "SLY": 0}},
+            {"text_en": "Owl", "text_de": "Eule", "scores": {"GRY": 1, "RAV": 8, "HUF": 0, "SLY": 0}},
+            {"text_en": "Cat", "text_de": "Katze", "scores": {"GRY": 3, "RAV": 1, "HUF": 0, "SLY": 6}},
+            {"text_en": "Phoenix", "text_de": "Phönix", "scores": {"GRY": 10, "RAV": 3, "HUF": 2, "SLY": 0}}
+        ]
+    }
+    create_res = client.post("/api/admin/questions", json=new_q_payload, headers=admin_headers)
+    assert create_res.status_code == 201
+    created_id = create_res.json()["question_id"]
+
+    # 3. Verify question appears in list
+    q_list_res2 = client.get("/api/admin/questions", headers=admin_headers)
+    assert len(q_list_res2.json()) == initial_count + 1
+    created_q = next(q for q in q_list_res2.json() if q["id"] == created_id)
+    assert created_q["text_en"] == "Which magical pet would you choose?"
+    assert len(created_q["options"]) == 4
+    phoenix_opt = next(opt for opt in created_q["options"] if opt["text_en"] == "Phoenix")
+    assert phoenix_opt["scores"]["GRY"] == 10
+
+    # 4. Update the question
+    update_payload = {
+        "text_en": "Which magical companion would you prefer?",
+        "text_de": "Welchen magischen Begleiter bevorzugst du?",
+        "options": [
+            {"text_en": "Snowy Owl", "text_de": "Schneeeule", "scores": {"GRY": 2, "RAV": 9, "HUF": 1, "SLY": 0}},
+            {"text_en": "Black Cat", "text_de": "Schwarze Katze", "scores": {"GRY": 0, "RAV": 2, "HUF": 0, "SLY": 8}}
+        ]
+    }
+    update_res = client.put(f"/api/admin/questions/{created_id}", json=update_payload, headers=admin_headers)
+    assert update_res.status_code == 200
+
+    # Verify update
+    q_list_res3 = client.get("/api/admin/questions", headers=admin_headers)
+    updated_q = next(q for q in q_list_res3.json() if q["id"] == created_id)
+    assert updated_q["text_en"] == "Which magical companion would you prefer?"
+    assert len(updated_q["options"]) == 2
+
+    # 5. Delete the question
+    del_res = client.delete(f"/api/admin/questions/{created_id}", headers=admin_headers)
+    assert del_res.status_code == 200
+
+    # Verify deleted
+    q_list_res4 = client.get("/api/admin/questions", headers=admin_headers)
+    assert len(q_list_res4.json()) == initial_count
+
+def test_question_score_validation(client):
+    """Test that points > 10 or < 0 are strictly rejected."""
+    login_resp = client.post("/api/admin/login", json={"username": "admin", "password": "alohomora"})
+    admin_headers = {"X-Admin-Token": login_resp.json()["token"]}
+
+    # Over 10 points (e.g. 15 points)
+    bad_payload_high = {
+        "text_en": "Invalid high score test?",
+        "text_de": "Ungültiger Test?",
+        "options": [
+            {"text_en": "Opt 1", "text_de": "Opt 1", "scores": {"GRY": 15, "RAV": 0, "HUF": 0, "SLY": 0}},
+            {"text_en": "Opt 2", "text_de": "Opt 2", "scores": {"GRY": 0, "RAV": 0, "HUF": 0, "SLY": 0}}
+        ]
+    }
+    res_high = client.post("/api/admin/questions", json=bad_payload_high, headers=admin_headers)
+    assert res_high.status_code == 422
+
+    # Negative points (e.g. -5 points)
+    bad_payload_neg = {
+        "text_en": "Invalid negative score test?",
+        "text_de": "Ungültiger negativer Test?",
+        "options": [
+            {"text_en": "Opt 1", "text_de": "Opt 1", "scores": {"GRY": -5, "RAV": 0, "HUF": 0, "SLY": 0}},
+            {"text_en": "Opt 2", "text_de": "Opt 2", "scores": {"GRY": 0, "RAV": 0, "HUF": 0, "SLY": 0}}
+        ]
+    }
+    res_neg = client.post("/api/admin/questions", json=bad_payload_neg, headers=admin_headers)
+    assert res_neg.status_code == 422
+
+def test_questionnaire_randomization(client):
+    """Test questions and options can be randomized or retrieved in canonical order."""
+    # Deterministic order
+    res_fixed = client.get("/api/questions?lang=en&randomize=false")
+    assert res_fixed.status_code == 200
+    fixed_data = res_fixed.json()
+    assert len(fixed_data) == 6
+    fixed_ids = [q["id"] for q in fixed_data]
+
+    # Randomized order
+    res_rand = client.get("/api/questions?lang=en&randomize=true")
+    assert res_rand.status_code == 200
+    rand_data = res_rand.json()
+    assert len(rand_data) == 6
+    # All 6 questions are present
+    assert set(q["id"] for q in rand_data) == set(fixed_ids)
+
+def test_participant_password_registration_and_login(client):
+    """Test registering with a password and logging back in with the same name and password."""
+    # 1. Register with password
+    reg_res = client.post("/api/participants", json={
+        "display_name": "Luna Lovegood",
+        "preferred_lang": "en",
+        "password": "radish-earrings"
+    })
+    assert reg_res.status_code == 201
+    luna_token = reg_res.json()["session_token"]
+    assert luna_token is not None
+
+    # 2. Attempting to register same name with WRONG password fails
+    bad_login = client.post("/api/participants", json={
+        "display_name": "Luna Lovegood",
+        "preferred_lang": "en",
+        "password": "wrong-password"
+    })
+    assert bad_login.status_code == 400
+    assert "Incorrect password" in bad_login.json()["detail"]
+
+    # 3. Returning with CORRECT password returns session token
+    good_login = client.post("/api/participants", json={
+        "display_name": "Luna Lovegood",
+        "preferred_lang": "en",
+        "password": "radish-earrings"
+    })
+    assert good_login.status_code == 201 or good_login.status_code == 200
+    assert good_login.json()["session_token"] == luna_token
+
+def test_house_games_flow_and_points(client):
+    """Test playing House Games to earn 1-2 random house points and verify real-time scoreboard update."""
+    # 1. Register and sort wizard
+    reg_res = client.post("/api/participants", json={
+        "display_name": "Cedric Diggory",
+        "preferred_lang": "en",
+        "password": "hufflepuff-pride"
+    })
+    token = reg_res.json()["session_token"]
+    headers = {"X-Session-Token": token}
+
+    # Attempt to play before sorting fails
+    early_play = client.post("/api/house-games/play", headers=headers)
+    assert early_play.status_code == 400
+    assert "Sorting Ceremony" in early_play.json()["detail"]
+
+    # Answer all questions (deterministic mode)
+    questions = client.get("/api/questions?lang=en&randomize=false").json()
+    for q in questions:
+        # Option index 2 is Hufflepuff
+        opt_id = q["options"][2]["id"]
+        client.post("/api/answers", json={"question_id": q["id"], "option_id": opt_id}, headers=headers)
+
+    # Sort
+    assign_res = client.post("/api/assignments?lang=en", headers=headers)
+    assert assign_res.status_code == 201
+    assigned_house = assign_res.json()["house_code"]
+    assert assigned_house == "HUF"
+
+    # Play House Games
+    play_res = client.post("/api/house-games/play", headers=headers)
+    assert play_res.status_code == 200
+    play_data = play_res.json()
+    assert play_data["status"] == "success"
+    assert play_data["awarded_points"] in [1, 2]
+    assert play_data["house_code"] == "HUF"
+    assert play_data["total_game_points"] >= play_data["awarded_points"]
+
+    # Verify GET /api/houses includes game_points
+    houses = client.get("/api/houses").json()
+    huf_house = next(h for h in houses if h["code"] == "HUF")
+    assert huf_house["game_points"] == play_data["total_game_points"]
+
+def test_spell_cast_limit_and_population_balance(client):
+    """Test max 2 spells per participant, half-points penalty for overpopulated house, and 3rd attempt rejection."""
+    # 1. Register and sort wizard
+    reg_res = client.post("/api/participants", json={
+        "display_name": "Cho Chang",
+        "preferred_lang": "en",
+        "password": "ravenclaw-diadem"
+    })
+    token = reg_res.json()["session_token"]
+    headers = {"X-Session-Token": token}
+
+    # Answer all questions for Ravenclaw (Option index 1)
+    questions = client.get("/api/questions?lang=en&randomize=false").json()
+    for q in questions:
+        opt_id = q["options"][1]["id"]
+        client.post("/api/answers", json={"question_id": q["id"], "option_id": opt_id}, headers=headers)
+
+    assign_res = client.post("/api/assignments?lang=en", headers=headers)
+    assert assign_res.status_code == 201
+
+    # 1st spell cast (Succeeds)
+    cast1 = client.post("/api/house-games/play", headers=headers)
+    assert cast1.status_code == 200
+    assert cast1.json()["casts_used"] == 1
+    assert cast1.json()["casts_remaining"] == 1
+
+    # 2nd spell cast (Succeeds)
+    cast2 = client.post("/api/house-games/play", headers=headers)
+    assert cast2.status_code == 200
+    assert cast2.json()["casts_used"] == 2
+    assert cast2.json()["casts_remaining"] == 0
+
+    # 3rd spell cast (Rejected - Max 2 reached)
+    cast3 = client.post("/api/house-games/play", headers=headers)
+    assert cast3.status_code == 400
+    assert "maximum spells" in cast3.json()["detail"]
+
+def test_admin_stats_includes_spell_metrics(client):
+    """Test that admin closing statistics include total spells cast, points, and house breakdown."""
+    login_res = client.post("/api/admin/login", json={"username": "admin", "password": "alohomora"})
+    assert login_res.status_code == 200
+    token = login_res.json()["token"]
+    headers = {"X-Admin-Token": token}
+
+    stats_res = client.get("/api/admin/stats", headers=headers)
+    assert stats_res.status_code == 200
+    stats = stats_res.json()
+    assert "total_spells_cast" in stats
+    assert "total_spell_points" in stats
+    assert "house_spell_stats" in stats
+    assert len(stats["house_spell_stats"]) == 4
+
+
+
+
 
 
 

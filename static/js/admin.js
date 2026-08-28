@@ -4,6 +4,8 @@ class AdminApp {
     constructor() {
         this.token = this.getStoredToken();
         this.participants = [];
+        this.questions = [];
+        this.currentTab = "roster";
         this.selectedParticipantId = null;
         this.currentHouseFilter = "ALL";
         this.currentSearchQuery = "";
@@ -92,7 +94,44 @@ class AdminApp {
             btnDetectIp.addEventListener("click", () => this.autoDetectIp());
         }
 
+        // Admin Navigation Tabs
+        document.querySelectorAll(".admin-tab-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const tab = e.currentTarget.getAttribute("data-tab");
+                this.switchTab(tab);
+            });
+        });
+
+        // Question Manager Toolbar & Modals
+        const btnAddQ = document.getElementById("btn-add-question");
+        if (btnAddQ) {
+            btnAddQ.addEventListener("click", () => this.openAddQuestionModal());
+        }
+        const btnCancelQ = document.getElementById("btn-cancel-question");
+        if (btnCancelQ) {
+            btnCancelQ.addEventListener("click", () => this.hideModal("modal-question"));
+        }
+        const qForm = document.getElementById("form-question-editor");
+        if (qForm) {
+            qForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+                this.saveQuestion();
+            });
+        }
+
         // Modals Buttons
+        const btnCancelEditPts = document.getElementById("btn-cancel-edit-points");
+        if (btnCancelEditPts) {
+            btnCancelEditPts.addEventListener("click", () => this.hideModal("modal-edit-points"));
+        }
+        const formEditPts = document.getElementById("form-edit-points");
+        if (formEditPts) {
+            formEditPts.addEventListener("submit", (e) => {
+                e.preventDefault();
+                this.handleSaveEditPoints();
+            });
+        }
+
         document.getElementById("btn-cancel-reassign").addEventListener("click", () => this.hideModal("modal-reassign"));
         document.getElementById("btn-save-reassign").addEventListener("click", () => this.saveReassignment());
         document.getElementById("btn-close-qr").addEventListener("click", () => this.hideModal("modal-qr"));
@@ -121,7 +160,11 @@ class AdminApp {
                 this.token = token;
                 this.renderAdminProfile();
                 this.loadAdminProfile();
-                this.loadParticipants();
+                if (this.currentTab === "questions") {
+                    this.renderQuestions();
+                } else {
+                    this.loadParticipants();
+                }
             } else {
                 const errEl = document.getElementById("login-error");
                 if (errEl && !errEl.classList.contains("hidden") && errEl.getAttribute("data-err-key")) {
@@ -147,6 +190,7 @@ class AdminApp {
         await this.loadAdminProfile();
         this.loadSettings();
         this.loadParticipants();
+        this.loadQuestions();
     }
 
     async loadAdminProfile() {
@@ -322,9 +366,13 @@ class AdminApp {
                    ${p.manual_override ? `<span class="manual-badge">${window.i18n.t('badge_manual')}</span>` : ''}`
                 : `<span style="color: var(--text-muted);">${window.i18n.t('not_sorted_yet')} (${p.answered_questions}/6)</span>`;
 
+            const spellBadge = p.spells_cast > 0
+                ? `<span title="${p.spells_cast} spells cast (${p.spell_points_won} pts)" style="display:inline-block; font-size:0.75rem; background:rgba(245,197,24,0.18); border:1px solid var(--gold-border); color:#fef08a; padding:2px 6px; border-radius:10px; margin-left:6px;">🔮 ${p.spells_cast}/2</span>`
+                : '';
+
             tr.innerHTML = `
                 <td>#${p.id}</td>
-                <td><strong>${this.escapeHtml(p.display_name)}</strong></td>
+                <td><strong>${this.escapeHtml(p.display_name)}</strong>${spellBadge}</td>
                 <td><span style="text-transform:uppercase; font-size:0.8rem; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">${p.preferred_lang || 'en'}</span></td>
                 <td>${houseHtml}</td>
                 <td>${p.total_score !== null && p.total_score !== undefined ? p.total_score + ' pts' : '—'}</td>
@@ -711,6 +759,17 @@ class AdminApp {
                     `;
                 }
 
+                let spellHouseStatsHtml = (data.house_spell_stats || []).map(h => {
+                    const houseName = lang === "de" ? h.name_de : h.name_en;
+                    const ptsStr = (h.game_points % 1 === 0) ? h.game_points : Number(h.game_points).toFixed(1);
+                    return `
+                        <div class="stats-row">
+                            <span>${crestIcons[h.code] || ''} <strong>${houseName}</strong></span>
+                            <span><strong>${ptsStr} pts</strong> <small style="color: var(--text-muted);">(${h.spells_cast || 0} ${lang === 'de' ? 'Zauber' : 'spells'})</small></span>
+                        </div>
+                    `;
+                }).join("");
+
                 container.innerHTML = `
                     <div class="stats-row" style="background: rgba(255, 255, 255, 0.05);">
                         <span>${lang === 'de' ? 'Registrierte Gäste' : 'Total Guests Registered'}:</span>
@@ -720,10 +779,16 @@ class AdminApp {
                         <span>${lang === 'de' ? 'Zugeordnete Schüler' : 'Total Sorted Students'}:</span>
                         <strong>${data.total_assigned}</strong>
                     </div>
+                    <div class="stats-row" style="background: rgba(245, 197, 24, 0.15); border: 1px solid rgba(245, 197, 24, 0.3);">
+                        <span>🔮 ${lang === 'de' ? 'Gesamte Zauber gewirkt' : 'Total Spells Cast'}:</span>
+                        <strong style="color: var(--gold-primary);">${data.total_spells_cast || 0} (${data.total_spell_points || 0} pts)</strong>
+                    </div>
                     ${largestHouseHtml}
                     ${divisiveHtml}
                     ${incompleteHtml}
-                    <h4 style="color: var(--gold-primary); margin-top: 10px; margin-bottom: 4px;">${lang === 'de' ? 'Hausverteilung' : 'House Distribution'}:</h4>
+                    <h4 style="color: var(--gold-primary); margin-top: 12px; margin-bottom: 4px;">🏆 ${lang === 'de' ? 'Hauspokal-Punkte & Zauber' : 'House Cup Points & Spells'}:</h4>
+                    ${spellHouseStatsHtml}
+                    <h4 style="color: var(--gold-primary); margin-top: 12px; margin-bottom: 4px;">👥 ${lang === 'de' ? 'Hausverteilung (Schüler)' : 'House Distribution (Students)'}:</h4>
                     ${housesHtml}
                 `;
 
@@ -762,8 +827,306 @@ class AdminApp {
         div.textContent = str || "";
         return div.innerHTML;
     }
+
+    // --- Question Manager Methods ---
+
+    switchTab(tabName) {
+        this.currentTab = tabName;
+        document.querySelectorAll(".admin-tab-btn").forEach(b => {
+            b.classList.toggle("active", b.getAttribute("data-tab") === tabName);
+        });
+        const rosterContent = document.getElementById("tab-content-roster");
+        const questionsContent = document.getElementById("tab-content-questions");
+        if (tabName === "questions") {
+            if (rosterContent) rosterContent.style.display = "none";
+            if (questionsContent) {
+                questionsContent.style.display = "block";
+                this.loadQuestions();
+            }
+        } else {
+            if (rosterContent) rosterContent.style.display = "block";
+            if (questionsContent) questionsContent.style.display = "none";
+            this.loadParticipants();
+        }
+    }
+
+    async loadQuestions() {
+        try {
+            const res = await fetch("/api/admin/questions", { headers: this.getAuthHeaders() });
+            if (res.ok) {
+                this.questions = await res.json();
+                this.renderQuestions();
+            }
+        } catch (e) {
+            console.error("Error loading questions", e);
+        }
+    }
+
+    renderQuestions() {
+        const container = document.getElementById("questions-container");
+        if (!container) return;
+
+        if (!this.questions || this.questions.length === 0) {
+            container.innerHTML = `
+                <div class="card" style="text-align: center; padding: 30px; color: var(--text-muted);">
+                    No questions found. Click "Add New Question" to create one.
+                </div>
+            `;
+            return;
+        }
+
+        const badgeLabel = window.i18n.t("question_badge") || "Question";
+        const editLabel = window.i18n.t("btn_edit") || "Edit";
+        const deleteLabel = window.i18n.t("btn_delete") || "Delete";
+        const markers = ["A", "B", "C", "D", "E", "F"];
+
+        container.innerHTML = this.questions.map((q, idx) => {
+            const optionsHtml = (q.options || []).map((opt, optIdx) => {
+                const scores = opt.scores || {};
+                const gry = scores["GRY"] || 0;
+                const rav = scores["RAV"] || 0;
+                const huf = scores["HUF"] || 0;
+                const sly = scores["SLY"] || 0;
+
+                const pills = [];
+                if (gry > 0) pills.push(`<span class="score-pill gry">🦁 +${gry}</span>`);
+                if (rav > 0) pills.push(`<span class="score-pill rav">🦅 +${rav}</span>`);
+                if (huf > 0) pills.push(`<span class="score-pill huf">🦡 +${huf}</span>`);
+                if (sly > 0) pills.push(`<span class="score-pill sly">🐍 +${sly}</span>`);
+                if (pills.length === 0) pills.push(`<span class="score-pill" style="color: var(--text-muted);">0 pts</span>`);
+
+                return `
+                    <div class="question-option-item">
+                        <div class="option-text-main">
+                            <strong>${markers[optIdx] || optIdx + 1}.</strong> ${this.escapeHtml(opt.text_en)}
+                        </div>
+                        <div class="option-text-de">${this.escapeHtml(opt.text_de)}</div>
+                        <div class="score-badge-list">
+                            ${pills.join("")}
+                        </div>
+                    </div>
+                `;
+            }).join("");
+
+            return `
+                <div class="question-card" data-question-id="${q.id}">
+                    <div class="question-card-header">
+                        <div class="question-number-badge">
+                            ${badgeLabel} #${idx + 1}
+                        </div>
+                        <div class="question-card-actions">
+                            <button type="button" class="btn-outline btn-edit-q" data-qid="${q.id}" style="padding: 4px 12px; font-size: 0.82rem;">
+                                ✏️ ${editLabel}
+                            </button>
+                            <button type="button" class="btn-danger btn-delete-q" data-qid="${q.id}" style="padding: 4px 12px; font-size: 0.82rem;">
+                                🗑️ ${deleteLabel}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="question-texts-box">
+                        <div class="question-text-row">🇬🇧 <strong>${this.escapeHtml(q.text_en)}</strong></div>
+                        <div class="question-text-row de">🇩🇪 ${this.escapeHtml(q.text_de)}</div>
+                    </div>
+                    <div class="question-options-preview">
+                        ${optionsHtml}
+                    </div>
+                </div>
+            `;
+        }).join("");
+
+        // Bind Edit & Delete buttons
+        container.querySelectorAll(".btn-edit-q").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const qid = parseInt(e.currentTarget.getAttribute("data-qid"), 10);
+                this.openEditQuestionModal(qid);
+            });
+        });
+
+        container.querySelectorAll(".btn-delete-q").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const qid = parseInt(e.currentTarget.getAttribute("data-qid"), 10);
+                this.deleteQuestion(qid);
+            });
+        });
+    }
+
+    renderOptionFormCards(optionsData = []) {
+        const container = document.getElementById("options-form-container");
+        if (!container) return;
+
+        const markers = ["A", "B", "C", "D"];
+        const defaultHouses = [
+            { code: "GRY", name: "🦁 Gryffindor", class: "gry" },
+            { code: "RAV", name: "🦅 Ravenclaw", class: "rav" },
+            { code: "HUF", name: "🦡 Hufflepuff", class: "huf" },
+            { code: "SLY", name: "🐍 Slytherin", class: "sly" }
+        ];
+
+        let html = "";
+        for (let i = 0; i < 4; i++) {
+            const opt = optionsData[i] || { text_en: "", text_de: "", scores: {} };
+            const scores = opt.scores || {};
+
+            const scoreInputs = defaultHouses.map(h => {
+                const scoreVal = scores[h.code] !== undefined ? scores[h.code] : (opt[`score_${h.code.toLowerCase()}`] || 0);
+                return `
+                    <div class="score-input-item ${h.class}">
+                        <label>${h.name}</label>
+                        <input type="number" class="score-input opt-score-${h.code.toLowerCase()}" data-house="${h.code}" min="0" max="10" value="${scoreVal}">
+                    </div>
+                `;
+            }).join("");
+
+            html += `
+                <div class="option-form-card" data-opt-idx="${i}">
+                    <div class="option-form-header">
+                        <span>Option ${markers[i]}</span>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 6px;">
+                        <input type="text" class="search-input opt-text-en" placeholder="Option ${markers[i]} (English)" value="${this.escapeHtml(opt.text_en)}" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 6px;">
+                        <input type="text" class="search-input opt-text-de" placeholder="Option ${markers[i]} (German)" value="${this.escapeHtml(opt.text_de)}" required>
+                    </div>
+                    <div class="score-inputs-grid">
+                        ${scoreInputs}
+                    </div>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
+    }
+
+    openAddQuestionModal() {
+        document.getElementById("edit-question-id").value = "";
+        document.getElementById("question-modal-title").textContent = window.i18n.t("modal_add_question_title") || "Add New Question";
+        document.getElementById("q-text-en").value = "";
+        document.getElementById("q-text-de").value = "";
+        this.clearError("question-form-error");
+
+        this.renderOptionFormCards([
+            { text_en: "", text_de: "", scores: { GRY: 5, RAV: 0, HUF: 0, SLY: 0 } },
+            { text_en: "", text_de: "", scores: { GRY: 0, RAV: 5, HUF: 0, SLY: 0 } },
+            { text_en: "", text_de: "", scores: { GRY: 0, RAV: 0, HUF: 5, SLY: 0 } },
+            { text_en: "", text_de: "", scores: { GRY: 0, RAV: 0, HUF: 0, SLY: 5 } }
+        ]);
+
+        this.showModal("modal-question");
+    }
+
+    openEditQuestionModal(questionId) {
+        const q = this.questions.find(item => item.id === questionId);
+        if (!q) return;
+
+        document.getElementById("edit-question-id").value = q.id;
+        document.getElementById("question-modal-title").textContent = window.i18n.t("modal_edit_question_title") || "Edit Question";
+        document.getElementById("q-text-en").value = q.text_en;
+        document.getElementById("q-text-de").value = q.text_de;
+        this.clearError("question-form-error");
+
+        this.renderOptionFormCards(q.options || []);
+        this.showModal("modal-question");
+    }
+
+    async saveQuestion() {
+        const editId = document.getElementById("edit-question-id").value;
+        const textEn = document.getElementById("q-text-en").value.trim();
+        const textDe = document.getElementById("q-text-de").value.trim();
+
+        if (!textEn || !textDe) {
+            this.showError("question-form-error", window.i18n.t("err_question_validation"));
+            return;
+        }
+
+        const optionCards = document.querySelectorAll(".option-form-card");
+        const options = [];
+
+        for (const card of optionCards) {
+            const optEn = card.querySelector(".opt-text-en").value.trim();
+            const optDe = card.querySelector(".opt-text-de").value.trim();
+
+            if (!optEn || !optDe) {
+                this.showError("question-form-error", window.i18n.t("err_question_validation"));
+                return;
+            }
+
+            const scores = {};
+            const scoreInputs = card.querySelectorAll(".score-input");
+            for (const input of scoreInputs) {
+                const house = input.getAttribute("data-house");
+                const pts = parseInt(input.value, 10) || 0;
+                if (pts < 0 || pts > 10) {
+                    this.showError("question-form-error", window.i18n.t("err_score_limit"));
+                    return;
+                }
+                scores[house] = pts;
+            }
+
+            options.push({
+                text_en: optEn,
+                text_de: optDe,
+                scores: scores
+            });
+        }
+
+        const payload = {
+            text_en: textEn,
+            text_de: textDe,
+            options: options
+        };
+
+        const saveBtn = document.getElementById("btn-save-question");
+        if (saveBtn) saveBtn.disabled = true;
+
+        try {
+            const url = editId ? `/api/admin/questions/${editId}` : "/api/admin/questions";
+            const method = editId ? "PUT" : "POST";
+
+            const res = await fetch(url, {
+                method: method,
+                headers: this.getAuthHeaders(),
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                this.hideModal("modal-question");
+                this.showToast(window.i18n.t("msg_question_saved") || "Question saved successfully!", "success");
+                await this.loadQuestions();
+            } else {
+                const errData = await res.json();
+                this.showError("question-form-error", errData.detail || "Failed to save question.");
+            }
+        } catch (err) {
+            this.showError("question-form-error", "Network connection error.");
+        } finally {
+            if (saveBtn) saveBtn.disabled = false;
+        }
+    }
+
+    deleteQuestion(questionId) {
+        const msg = window.i18n.t("confirm_delete_question") || "Are you sure you want to delete this question?";
+        this.confirmDialog(msg, async () => {
+            try {
+                const res = await fetch(`/api/admin/questions/${questionId}`, {
+                    method: "DELETE",
+                    headers: this.getAuthHeaders()
+                });
+                if (res.ok) {
+                    this.showToast(window.i18n.t("msg_question_deleted") || "Question deleted successfully!", "success");
+                    await this.loadQuestions();
+                } else {
+                    const errData = await res.json();
+                    this.showToast(errData.detail || "Failed to delete question.", "error");
+                }
+            } catch (err) {
+                this.showToast("Connection error while deleting question.", "error");
+            }
+        }, "danger");
+    }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
     window.adminApp = new AdminApp();
 });
+
