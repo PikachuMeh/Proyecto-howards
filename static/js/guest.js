@@ -281,18 +281,39 @@ class GuestApp {
         // Options
         const container = document.getElementById("options-list");
         container.innerHTML = "";
-        const markers = ["A", "B", "C", "D"];
+        const houseThemes = ["gry", "sly", "rav", "huf"];
+        const crestMap = {
+            "gry": "/static/images/crest_gryffindor.jpg",
+            "sly": "/static/images/crest_slytherin.jpg",
+            "rav": "/static/images/crest_ravenclaw.jpg",
+            "huf": "/static/images/crest_hufflepuff.jpg"
+        };
 
         q.options.forEach((opt, idx) => {
+            const theme = houseThemes[idx % 4];
+            const crestImg = crestMap[theme];
             const card = document.createElement("div");
-            card.className = "option-card";
+            card.className = `option-card theme-${theme}`;
             if (this.selectedAnswers[q.id] === opt.id) {
                 card.classList.add("selected");
             }
 
+            const animalMap = {
+                "theme-gry": "lion",
+                "theme-sly": "serpent",
+                "theme-rav": "eagle",
+                "theme-huf": "badger"
+            };
+            const animal = animalMap[theme] || "lion";
+
             card.innerHTML = `
-                <div class="option-marker">${markers[idx] || (idx + 1)}</div>
-                <div class="option-text">${opt.text}</div>
+                <div class="option-dither-overlay"></div>
+                <div class="option-watermark ${animal}"></div>
+                <div class="option-crest-box">
+                    <img src="${crestImg}" alt="${theme}" class="option-crest-img">
+                </div>
+                <div class="option-text">${this.escapeHtml(opt.text)}</div>
+                <div class="option-check-circle"></div>
             `;
 
             card.addEventListener("click", () => {
@@ -405,39 +426,51 @@ class GuestApp {
         this.playFanfare();
 
         const card = document.getElementById("result-card");
+        const wizardNameEl = document.getElementById("result-wizard-name");
         const title = document.getElementById("result-house-name");
         const motto = document.getElementById("result-house-motto");
-        const crest = document.getElementById("house-crest-icon");
+        const crestImgEl = document.getElementById("result-crest-img");
+        const crestAuraEl = document.getElementById("crest-aura");
 
         const houseTheme = {
-            "GRY": { text: "#fca5a5", glow: "rgba(239, 68, 68, 0.7)", border: "#ef4444", bg: "rgba(116, 0, 1, 0.35)", bar: "#ef4444" },
-            "RAV": { text: "#93c5fd", glow: "rgba(59, 130, 246, 0.7)", border: "#3b82f6", bg: "rgba(14, 26, 64, 0.5)", bar: "#3b82f6" },
-            "HUF": { text: "#fde047", glow: "rgba(234, 179, 8, 0.7)", border: "#eab308", bg: "rgba(236, 185, 57, 0.3)", bar: "#eab308" },
-            "SLY": { text: "#86efac", glow: "rgba(34, 197, 94, 0.7)", border: "#22c55e", bg: "rgba(26, 71, 42, 0.4)", bar: "#22c55e" }
+            "GRY": { text: "#fca5a5", glow: "rgba(239, 68, 68, 0.7)", border: "#ef4444", bg: "rgba(116, 0, 1, 0.35)", bar: "#ef4444", img: "/static/images/crest_gryffindor.jpg" },
+            "RAV": { text: "#93c5fd", glow: "rgba(59, 130, 246, 0.7)", border: "#3b82f6", bg: "rgba(14, 26, 64, 0.5)", bar: "#3b82f6", img: "/static/images/crest_ravenclaw.jpg" },
+            "HUF": { text: "#fde047", glow: "rgba(234, 179, 8, 0.7)", border: "#eab308", bg: "rgba(236, 185, 57, 0.3)", bar: "#eab308", img: "/static/images/crest_hufflepuff.jpg" },
+            "SLY": { text: "#86efac", glow: "rgba(34, 197, 94, 0.7)", border: "#22c55e", bg: "rgba(26, 71, 42, 0.4)", bar: "#22c55e", img: "/static/images/crest_slytherin.jpg" }
         };
 
         const theme = houseTheme[assignment.house_code] || {
-            text: "#f5c518", glow: "rgba(245, 197, 24, 0.6)", border: "#d3a625", bg: "rgba(22, 27, 46, 0.95)", bar: "#f5c518"
+            text: "#f5c518", glow: "rgba(245, 197, 24, 0.6)", border: "#d3a625", bg: "rgba(22, 27, 46, 0.95)", bar: "#f5c518", img: "/static/images/crest_gryffindor.jpg"
         };
+
+        if (wizardNameEl) {
+            wizardNameEl.textContent = this.participant ? this.participant.display_name : "";
+        }
 
         title.textContent = assignment.house_name;
         title.style.color = theme.text;
         title.style.textShadow = `0 0 25px ${theme.glow}, 0 2px 6px rgba(0,0,0,0.9)`;
         motto.textContent = `"${assignment.motto}"`;
         
-        // Crest icon mapping
-        const icons = {
-            "GRY": "🦁",
-            "RAV": "🦅",
-            "HUF": "🦡",
-            "SLY": "🐍"
-        };
-        crest.textContent = icons[assignment.house_code] || "✨";
+        if (crestImgEl) {
+            crestImgEl.src = theme.img;
+            crestImgEl.alt = assignment.house_name;
+        }
+
+        if (crestAuraEl) {
+            crestAuraEl.style.background = `radial-gradient(circle, ${theme.glow} 0%, transparent 70%)`;
+        }
 
         // House color aura & background
         card.style.borderColor = theme.border;
         card.style.boxShadow = `0 0 35px ${theme.glow}`;
         card.style.background = `linear-gradient(180deg, ${theme.bg} 0%, rgba(11, 14, 26, 0.95) 100%)`;
+
+        const watermarkEl = document.getElementById("result-watermark");
+        if (watermarkEl) {
+            const animalMap = { "GRY": "lion", "SLY": "serpent", "RAV": "eagle", "HUF": "badger" };
+            watermarkEl.className = `result-watermark-silhouette ${animalMap[assignment.house_code] || 'lion'}`;
+        }
 
         // Show header sort another button
         const headerSortBtn = document.getElementById("btn-header-sort-another");
@@ -461,9 +494,10 @@ class GuestApp {
             const row = document.createElement("div");
             row.className = "breakdown-bar-row";
             const barColor = houseTheme[code] ? houseTheme[code].bar : "#f5c518";
+            const crestIcon = houseTheme[code] ? `<img src="${houseTheme[code].img}" class="crest-img-sm" style="margin-right: 6px;">` : '';
             row.innerHTML = `
                 <div class="breakdown-label-row">
-                    <span>${icons[code] || ''} ${houseNames[code] || code}</span>
+                    <span style="display: inline-flex; align-items: center;">${crestIcon} ${houseNames[code] || code}</span>
                     <span>${score} pts (${pct}%)</span>
                 </div>
                 <div class="breakdown-track">
@@ -489,8 +523,18 @@ class GuestApp {
             authView.classList.remove("hidden");
             unauthView.classList.add("hidden");
 
-            const icons = { "GRY": "🦁", "RAV": "🦅", "HUF": "🦡", "SLY": "🐍" };
-            document.getElementById("games-house-crest").textContent = icons[this.assignment.house_code] || "✨";
+            const crestUrls = {
+                "GRY": "/static/images/crest_gryffindor.jpg",
+                "RAV": "/static/images/crest_ravenclaw.jpg",
+                "HUF": "/static/images/crest_hufflepuff.jpg",
+                "SLY": "/static/images/crest_slytherin.jpg"
+            };
+            const crestUrl = crestUrls[this.assignment.house_code] || "/static/images/crest_gryffindor.jpg";
+            
+            const crestBox = document.getElementById("games-house-crest");
+            if (crestBox) {
+                crestBox.innerHTML = `<img src="${crestUrl}" alt="House Crest" class="crest-img-md" style="border-radius: 8px;">`;
+            }
             document.getElementById("games-house-name").textContent = this.assignment.house_name;
             document.getElementById("games-wizard-name").textContent = this.participant.display_name;
 
@@ -503,12 +547,12 @@ class GuestApp {
             if (used >= 2) {
                 if (btn) {
                     btn.disabled = true;
-                    btn.textContent = "🔒 Max Spells Cast (2/2)";
+                    btn.textContent = window.i18n.t("btn_max_spells_reached");
                 }
             } else {
                 if (btn) {
                     btn.disabled = false;
-                    btn.textContent = `🎲 Cast Magical Spell (${used}/2) ✨`;
+                    btn.textContent = window.i18n.t("btn_cast_spell_count", { used: used });
                 }
             }
 
@@ -523,10 +567,10 @@ class GuestApp {
                     if (btn) {
                         if (meData.casts_used >= 2) {
                             btn.disabled = true;
-                            btn.textContent = "🔒 Max Spells Cast (2/2)";
+                            btn.textContent = window.i18n.t("btn_max_spells_reached");
                         } else {
                             btn.disabled = false;
-                            btn.textContent = `🎲 Cast Magical Spell (${meData.casts_used}/2) ✨`;
+                            btn.textContent = window.i18n.t("btn_cast_spell_count", { used: meData.casts_used });
                         }
                     }
                 }
@@ -737,6 +781,13 @@ class GuestApp {
                 osc.stop(ctx.currentTime + idx * 0.15 + 0.6);
             });
         } catch (e) {}
+    }
+
+    escapeHtml(str) {
+        if (!str) return "";
+        const div = document.createElement("div");
+        div.textContent = str;
+        return div.innerHTML;
     }
 }
 

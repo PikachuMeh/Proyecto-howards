@@ -116,6 +116,7 @@ class AdminParticipantPointsUpdate(BaseModel):
     game_points: Optional[float] = Field(None, ge=0, description="House Cup Points contributed by this participant")
     sorting_score: Optional[int] = Field(None, ge=0, description="Sorting questionnaire total score")
     spells_cast: Optional[int] = Field(None, ge=0, le=2, description="Number of spells cast (0, 1, or 2)")
+    house_id: Optional[int] = Field(None, description="House ID if reassigning house")
 
 class AdminEventSettings(BaseModel):
     balancing_mode: bool

@@ -161,7 +161,7 @@ def list_participants(lang: str = "en"):
                    CASE WHEN ? = 'de' THEN h.name_de ELSE h.name_en END as house_name,
                    h.color_hex,
                    (SELECT COUNT(*) FROM answer an WHERE an.participant_id = p.id) as answered_questions,
-                   (SELECT COUNT(*) FROM house_game_point gp WHERE gp.participant_id = p.id) as spells_cast,
+                   (SELECT COUNT(*) FROM house_game_point gp WHERE gp.participant_id = p.id AND gp.is_spell = 1) as spells_cast,
                    (SELECT COALESCE(SUM(points), 0) FROM house_game_point gp WHERE gp.participant_id = p.id) as spell_points_won
             FROM participant p
             LEFT JOIN assignment a ON a.participant_id = p.id
@@ -183,20 +183,23 @@ async def manual_reassign(participant_id: int, data: AdminReassign):
     with get_db() as conn:
         cursor = conn.cursor()
         # Verify participant
-        cursor.execute("SELECT id, display_name FROM participant WHERE id = ?", (participant_id,))
+        cursor.execute("SELECT id, display_name, event_id FROM participant WHERE id = ?", (participant_id,))
         p = cursor.fetchone()
         if not p:
             raise HTTPException(status_code=404, detail="Participant not found.")
 
-        # Verify house
+        # Verify target house
         cursor.execute("SELECT id, code, name_en, name_de, color_hex, secondary_color, motto_en, motto_de, crest_icon FROM house WHERE id = ?", (data.house_id,))
         house = cursor.fetchone()
         if not house:
             raise HTTPException(status_code=404, detail="House not found.")
 
-        # Upsert / Update assignment with manual_override = 1
-        cursor.execute("SELECT id FROM assignment WHERE participant_id = ?", (participant_id,))
+        # Check existing assignment
+        cursor.execute("SELECT id, house_id FROM assignment WHERE participant_id = ?", (participant_id,))
         assign_row = cursor.fetchone()
+        old_house_id = assign_row["house_id"] if assign_row else None
+
+        # Upsert / Update assignment with manual_override = 1
         if assign_row:
             cursor.execute("""
                 UPDATE assignment
@@ -209,7 +212,62 @@ async def manual_reassign(participant_id: int, data: AdminReassign):
                 VALUES (?, ?, 0, '{}', 1, CURRENT_TIMESTAMP)
             """, (participant_id, data.house_id))
 
-    # Broadcast update to public screen via SSE
+        # If house has changed, old house loses this participant's points & participant's spell attempts are reset!
+        old_house_info = None
+        if old_house_id and old_house_id != data.house_id:
+            # Delete previous points for this participant from old house
+            cursor.execute("DELETE FROM house_game_point WHERE participant_id = ? AND event_id = ?", (participant_id, p["event_id"]))
+            
+            # Recalculate old house game_points
+            cursor.execute("""
+                UPDATE house
+                SET game_points = (
+                    SELECT COALESCE(SUM(points), 0)
+                    FROM house_game_point
+                    WHERE house_id = ?
+                )
+                WHERE id = ?
+            """, (old_house_id, old_house_id))
+
+            cursor.execute("SELECT id, code, name_en, game_points FROM house WHERE id = ?", (old_house_id,))
+            old_house_info = cursor.fetchone()
+
+        # Recalculate target house game_points
+        cursor.execute("""
+            UPDATE house
+            SET game_points = (
+                SELECT COALESCE(SUM(points), 0)
+                FROM house_game_point
+                WHERE house_id = ?
+            )
+            WHERE id = ?
+        """, (data.house_id, data.house_id))
+
+        cursor.execute("SELECT game_points FROM house WHERE id = ?", (data.house_id,))
+        new_house_points = float(cursor.fetchone()["game_points"])
+
+    # Broadcast old house points deduction to /screen via SSE
+    if old_house_info:
+        await sse_manager.broadcast_house_points({
+            "house_id": old_house_info["id"],
+            "house_code": old_house_info["code"],
+            "house_name": old_house_info["name_en"],
+            "participant_name": p["display_name"],
+            "awarded_points": 0,
+            "total_game_points": float(old_house_info["game_points"])
+        })
+
+    # Broadcast new house points update via SSE
+    await sse_manager.broadcast_house_points({
+        "house_id": house["id"],
+        "house_code": house["code"],
+        "house_name": house["name_en"],
+        "participant_name": p["display_name"],
+        "awarded_points": 0,
+        "total_game_points": new_house_points
+    })
+
+    # Broadcast assignment update to public screen via SSE
     await sse_manager.broadcast_assignment({
         "participant_id": p["id"],
         "display_name": p["display_name"],
@@ -225,7 +283,7 @@ async def manual_reassign(participant_id: int, data: AdminReassign):
         "is_manual_override": True
     })
 
-    return {"status": "success", "message": f"Participant reassigned to {house['name_en']}."}
+    return {"status": "success", "message": f"Participant reassigned to {house['name_en']}. Previous house points removed and spells cast reset to 0/2."}
 
 @router.patch("/participants/{participant_id}/points", dependencies=[Depends(verify_admin)])
 async def update_participant_points(participant_id: int, data: AdminParticipantPointsUpdate):
@@ -234,6 +292,7 @@ async def update_participant_points(participant_id: int, data: AdminParticipantP
     - House Cup Points (updates house_game_point transactions and recalibrates house total)
     - Sorting Ceremony Score (updates assignment total_score)
     - Spells Cast attempts (allows resetting or adjusting cast limits)
+    - House Reassignment (reassigns house, removing points from old house)
     Broadcasts live updates to /screen via SSE.
     """
     with get_db() as conn:
@@ -251,33 +310,70 @@ async def update_participant_points(participant_id: int, data: AdminParticipantP
         if not participant:
             raise HTTPException(status_code=404, detail="Participant not found.")
 
-        house_id = participant["house_id"]
+        old_house_id = participant["house_id"]
         event_id = participant["event_id"]
+        target_house_id = data.house_id if data.house_id is not None else old_house_id
 
-        # 2. Update Sorting Ceremony Score
+        # 2. Check house change
+        old_house_info = None
+        new_house_assigned = False
+        if data.house_id is not None and old_house_id and data.house_id != old_house_id:
+            # Update assignment to new house
+            cursor.execute("""
+                UPDATE assignment
+                SET house_id = ?, manual_override = 1, assigned_at = CURRENT_TIMESTAMP
+                WHERE participant_id = ?
+            """, (data.house_id, participant_id))
+
+            # Delete old points so old house loses them
+            cursor.execute("DELETE FROM house_game_point WHERE participant_id = ? AND event_id = ?", (participant_id, event_id))
+
+            # Recalibrate old house
+            cursor.execute("""
+                UPDATE house
+                SET game_points = (
+                    SELECT COALESCE(SUM(points), 0)
+                    FROM house_game_point
+                    WHERE house_id = ?
+                )
+                WHERE id = ?
+            """, (old_house_id, old_house_id))
+
+            cursor.execute("SELECT id, code, name_en, game_points FROM house WHERE id = ?", (old_house_id,))
+            old_house_info = cursor.fetchone()
+            new_house_assigned = True
+
+        active_house_id = target_house_id
+
+        # 3. Update Sorting Ceremony Score
         if data.sorting_score is not None:
-            if house_id:
+            if active_house_id:
                 cursor.execute("""
                     UPDATE assignment
                     SET total_score = ?, manual_override = 1
                     WHERE participant_id = ?
                 """, (data.sorting_score, participant_id))
 
-        # 3. Update House Cup Points and Spells Cast
+        # 4. Update House Cup Points and Spells Cast for the active house
         new_house_points = 0.0
-        if house_id is not None:
-            # Check current stats
+        if active_house_id is not None:
+            # Check current stats for active house
             cursor.execute("""
-                SELECT COUNT(*) as cnt, COALESCE(SUM(points), 0) as total_pts
+                SELECT COUNT(*) as cnt
+                FROM house_game_point
+                WHERE participant_id = ? AND event_id = ? AND is_spell = 1
+            """, (participant_id, event_id))
+            current_casts = cursor.fetchone()["cnt"]
+
+            cursor.execute("""
+                SELECT COALESCE(SUM(points), 0) as total_pts
                 FROM house_game_point
                 WHERE participant_id = ? AND event_id = ?
             """, (participant_id, event_id))
-            current_stats = cursor.fetchone()
-            current_pts = float(current_stats["total_pts"]) if current_stats else 0.0
-            current_casts = current_stats["cnt"] if current_stats else 0
+            current_pts = float(cursor.fetchone()["total_pts"])
 
             target_pts = data.game_points if data.game_points is not None else current_pts
-            target_casts = data.spells_cast if data.spells_cast is not None else (1 if target_pts > 0 and current_casts == 0 else current_casts)
+            target_casts = data.spells_cast if data.spells_cast is not None else current_casts
 
             # Re-record house_game_point entries for this participant
             cursor.execute("""
@@ -285,20 +381,20 @@ async def update_participant_points(participant_id: int, data: AdminParticipantP
                 WHERE participant_id = ? AND event_id = ?
             """, (participant_id, event_id))
 
-            if target_casts > 0 and target_pts > 0:
+            if target_casts == 0:
+                if target_pts > 0:
+                    cursor.execute("""
+                        INSERT INTO house_game_point (event_id, participant_id, house_id, points, is_spell)
+                        VALUES (?, ?, ?, ?, 0)
+                    """, (event_id, participant_id, active_house_id, target_pts))
+            else:
                 pts_per_cast = round(target_pts / target_casts, 2)
                 for i in range(target_casts):
                     pts = pts_per_cast if i < target_casts - 1 else round(target_pts - pts_per_cast * (target_casts - 1), 2)
                     cursor.execute("""
-                        INSERT INTO house_game_point (event_id, participant_id, house_id, points)
-                        VALUES (?, ?, ?, ?)
-                    """, (event_id, participant_id, house_id, pts))
-            elif target_casts > 0 and target_pts == 0:
-                for _ in range(target_casts):
-                    cursor.execute("""
-                        INSERT INTO house_game_point (event_id, participant_id, house_id, points)
-                        VALUES (?, ?, ?, 0)
-                    """, (event_id, participant_id, house_id))
+                        INSERT INTO house_game_point (event_id, participant_id, house_id, points, is_spell)
+                        VALUES (?, ?, ?, ?, 1)
+                    """, (event_id, participant_id, active_house_id, pts))
 
             # Recalibrate house total game_points
             cursor.execute("""
@@ -309,22 +405,49 @@ async def update_participant_points(participant_id: int, data: AdminParticipantP
                     WHERE house_id = house.id
                 )
                 WHERE id = ?
-            """, (house_id,))
+            """, (active_house_id,))
 
-            # Read new total for house
-            cursor.execute("SELECT game_points FROM house WHERE id = ?", (house_id,))
-            new_house_points = float(cursor.fetchone()["game_points"])
+            # Read new total for active house
+            cursor.execute("SELECT id, code, name_en, name_de, color_hex, secondary_color, motto_en, motto_de, crest_icon, game_points FROM house WHERE id = ?", (active_house_id,))
+            new_house_row = cursor.fetchone()
+            new_house_points = float(new_house_row["game_points"])
 
-    # 4. Broadcast live update to /screen via SSE if house is assigned
-    if house_id:
+    # 5. Broadcast SSE updates
+    if old_house_info:
         await sse_manager.broadcast_house_points({
-            "house_id": house_id,
-            "house_code": participant["house_code"],
-            "house_name": participant["house_name"],
+            "house_id": old_house_info["id"],
+            "house_code": old_house_info["code"],
+            "house_name": old_house_info["name_en"],
+            "participant_name": participant["display_name"],
+            "awarded_points": 0,
+            "total_game_points": float(old_house_info["game_points"])
+        })
+
+    if active_house_id and new_house_row:
+        await sse_manager.broadcast_house_points({
+            "house_id": new_house_row["id"],
+            "house_code": new_house_row["code"],
+            "house_name": new_house_row["name_en"],
             "participant_name": participant["display_name"],
             "awarded_points": data.game_points if data.game_points is not None else 0,
             "total_game_points": new_house_points
         })
+
+        if new_house_assigned:
+            await sse_manager.broadcast_assignment({
+                "participant_id": participant["id"],
+                "display_name": participant["display_name"],
+                "house_code": new_house_row["code"],
+                "house_name_en": new_house_row["name_en"],
+                "house_name_de": new_house_row["name_de"],
+                "color_hex": new_house_row["color_hex"],
+                "secondary_color": new_house_row["secondary_color"],
+                "motto_en": new_house_row["motto_en"],
+                "motto_de": new_house_row["motto_de"],
+                "crest_icon": new_house_row["crest_icon"],
+                "is_hesitant": False,
+                "is_manual_override": True
+            })
 
     return {
         "status": "success",
@@ -531,15 +654,16 @@ def get_closing_stats():
                     }
 
         # 5. House Game Points & Spell Casting Statistics
-        cursor.execute("SELECT COUNT(*) as cnt, COALESCE(SUM(points), 0) as total_pts FROM house_game_point")
-        spell_summary = cursor.fetchone()
-        total_spells_cast = spell_summary["cnt"] if spell_summary else 0
-        total_spell_points = float(spell_summary["total_pts"]) if spell_summary else 0.0
+        cursor.execute("SELECT COUNT(*) as cnt FROM house_game_point WHERE is_spell = 1")
+        total_spells_cast = cursor.fetchone()["cnt"]
+
+        cursor.execute("SELECT COALESCE(SUM(points), 0) as total_pts FROM house_game_point")
+        total_spell_points = float(cursor.fetchone()["total_pts"])
 
         # House Game Points breakdown by House
         cursor.execute("""
             SELECT h.id, h.code, h.name_en, h.name_de, h.color_hex, h.crest_icon, h.game_points,
-                   (SELECT COUNT(*) FROM house_game_point gp WHERE gp.house_id = h.id) as spells_cast
+                   (SELECT COUNT(*) FROM house_game_point gp WHERE gp.house_id = h.id AND gp.is_spell = 1) as spells_cast
             FROM house h
             ORDER BY h.game_points DESC
         """)

@@ -396,7 +396,7 @@ def get_me(participant: Dict[str, Any] = Depends(get_current_participant)):
         cursor.execute("""
             SELECT COUNT(*) as casts_used
             FROM house_game_point
-            WHERE participant_id = ? AND event_id = ?
+            WHERE participant_id = ? AND event_id = ? AND is_spell = 1
         """, (participant["id"], participant["event_id"]))
         row = cursor.fetchone()
         casts_used = row["casts_used"] if row else 0
@@ -487,7 +487,7 @@ async def play_house_game(participant: Dict[str, Any] = Depends(get_current_part
         cursor.execute("""
             SELECT COUNT(*) as casts_count
             FROM house_game_point
-            WHERE participant_id = ? AND event_id = ?
+            WHERE participant_id = ? AND event_id = ? AND is_spell = 1
         """, (participant["id"], event_id))
         casts_count = cursor.fetchone()["casts_count"]
         if casts_count >= 2:
@@ -522,8 +522,8 @@ async def play_house_game(participant: Dict[str, Any] = Depends(get_current_part
 
         # 3. Record point transaction
         cursor.execute("""
-            INSERT INTO house_game_point (event_id, participant_id, house_id, points)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO house_game_point (event_id, participant_id, house_id, points, is_spell)
+            VALUES (?, ?, ?, ?, 1)
         """, (event_id, participant["id"], house_id, awarded_points))
 
         # 4. Update house total game points

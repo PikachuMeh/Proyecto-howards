@@ -130,7 +130,8 @@ CREATE TABLE IF NOT EXISTS house_game_point (
     event_id INTEGER NOT NULL REFERENCES event(id) ON DELETE CASCADE,
     participant_id INTEGER NOT NULL REFERENCES participant(id) ON DELETE CASCADE,
     house_id INTEGER NOT NULL REFERENCES house(id) ON DELETE CASCADE,
-    points INTEGER NOT NULL,
+    points REAL NOT NULL,
+    is_spell INTEGER NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -158,5 +159,11 @@ def init_db(db_path: Path = None):
         cursor.execute("PRAGMA table_info(house)")
         h_cols = [row["name"] for row in cursor.fetchall()]
         if h_cols and "game_points" not in h_cols:
-            cursor.execute("ALTER TABLE house ADD COLUMN game_points INTEGER NOT NULL DEFAULT 0")
+            cursor.execute("ALTER TABLE house ADD COLUMN game_points REAL NOT NULL DEFAULT 0")
+
+        # Schema migration check: ensure is_spell column exists in house_game_point table
+        cursor.execute("PRAGMA table_info(house_game_point)")
+        gp_cols = [row["name"] for row in cursor.fetchall()]
+        if gp_cols and "is_spell" not in gp_cols:
+            cursor.execute("ALTER TABLE house_game_point ADD COLUMN is_spell INTEGER NOT NULL DEFAULT 1")
 

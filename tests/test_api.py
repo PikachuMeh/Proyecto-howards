@@ -486,6 +486,118 @@ def test_admin_stats_includes_spell_metrics(client):
     assert "house_spell_stats" in stats
     assert len(stats["house_spell_stats"]) == 4
 
+def test_admin_view_and_edit_participant_points(client):
+    """Test that admin can view and manually adjust house cup points, quiz scores, and spell attempts."""
+    # 1. Register student, answer questions and sort
+    reg_res = client.post("/api/participants", json={
+        "display_name": "Luna Lovegood",
+        "password": "spectrespecs"
+    })
+    token = reg_res.json()["session_token"]
+    user_headers = {"X-Session-Token": token}
+    p_id = reg_res.json()["id"]
+
+    questions = client.get("/api/questions?lang=en&randomize=false").json()
+    for q in questions:
+        opt_id = q["options"][1]["id"]  # Ravenclaw
+        client.post("/api/answers", json={"question_id": q["id"], "option_id": opt_id}, headers=user_headers)
+
+    client.post("/api/assignments?lang=en", headers=user_headers)
+
+    # Cast 2 spells to reach limit
+    client.post("/api/house-games/play", headers=user_headers)
+    client.post("/api/house-games/play", headers=user_headers)
+
+    # 2. Admin logs in
+    admin_login = client.post("/api/admin/login", json={"username": "admin", "password": "alohomora"})
+    admin_token = admin_login.json()["token"]
+    admin_headers = {"X-Admin-Token": admin_token}
+
+    # 3. View participants
+    parts = client.get("/api/admin/participants", headers=admin_headers).json()
+    luna = next(p for p in parts if p["id"] == p_id)
+    assert luna["spells_cast"] == 2
+    assert luna["spell_points_won"] > 0
+
+    # 4. Admin edits Luna's points: awards 15.5 House Cup points, sets quiz score to 30, and resets spell attempts to 0
+    edit_res = client.patch(f"/api/admin/participants/{p_id}/points", json={
+        "game_points": 15.5,
+        "sorting_score": 30,
+        "spells_cast": 0
+    }, headers=admin_headers)
+    assert edit_res.status_code == 200
+
+    # 5. Verify updated participant data
+    parts_after = client.get("/api/admin/participants", headers=admin_headers).json()
+    luna_after = next(p for p in parts_after if p["id"] == p_id)
+    assert luna_after["spell_points_won"] == 15.5
+    assert luna_after["total_score"] == 30
+    assert luna_after["spells_cast"] == 0
+
+    # 6. Verify Ravenclaw house total reflects the updated points
+    houses = client.get("/api/houses").json()
+    rav = next(h for h in houses if h["code"] == "RAV")
+    assert rav["game_points"] >= 15.5
+
+    # 7. Student can cast spells again because admin reset spells_cast to 0
+    new_cast = client.post("/api/house-games/play", headers=user_headers)
+    assert new_cast.status_code == 200
+    assert new_cast.json()["casts_used"] == 1
+
+def test_house_reassign_removes_old_points_and_resets_spells(client):
+    """Test that when a student is reassigned to another house, the old house loses their points and spell attempts reset to 0."""
+    # 1. Register student and sort to Slytherin (house_id = 4, option index 3)
+    reg = client.post("/api/participants", json={"display_name": "Draco Malfoy", "password": "pure-blood"})
+    token = reg.json()["session_token"]
+    user_headers = {"X-Session-Token": token}
+    p_id = reg.json()["id"]
+
+    questions = client.get("/api/questions?lang=en&randomize=false").json()
+    for q in questions:
+        opt_id = q["options"][3]["id"]  # Slytherin
+        client.post("/api/answers", json={"question_id": q["id"], "option_id": opt_id}, headers=user_headers)
+
+    assign = client.post("/api/assignments?lang=en", headers=user_headers)
+    assert assign.json()["house_code"] == "SLY"
+
+    # Cast 2 spells for Slytherin
+    cast1 = client.post("/api/house-games/play", headers=user_headers)
+    assert cast1.status_code == 200
+    cast2 = client.post("/api/house-games/play", headers=user_headers)
+    assert cast2.status_code == 200
+
+    # Read Slytherin points
+    houses_before = client.get("/api/houses").json()
+    sly_before = next(h for h in houses_before if h["code"] == "SLY")["game_points"]
+    assert sly_before > 0
+
+    # 2. Admin logs in and reassigns Draco to Gryffindor (house_id = 1)
+    admin_login = client.post("/api/admin/login", json={"username": "admin", "password": "alohomora"})
+    admin_headers = {"X-Admin-Token": admin_login.json()["token"]}
+
+    reassign_res = client.patch(f"/api/admin/assignments/{p_id}", json={"house_id": 1}, headers=admin_headers)
+    assert reassign_res.status_code == 200
+
+    # 3. Verify Slytherin lost Draco's points
+    houses_after = client.get("/api/houses").json()
+    sly_after = next(h for h in houses_after if h["code"] == "SLY")["game_points"]
+    assert sly_after < sly_before
+
+    # 4. Verify Draco's spells cast is reset to 0 in admin roster
+    parts = client.get("/api/admin/participants", headers=admin_headers).json()
+    draco = next(p for p in parts if p["id"] == p_id)
+    assert draco["house_code"] == "GRY"
+    assert draco["spells_cast"] == 0
+    assert draco["spell_points_won"] == 0
+
+    # 5. Draco can now cast spells for Gryffindor
+    gry_cast = client.post("/api/house-games/play", headers=user_headers)
+    assert gry_cast.status_code == 200
+    assert gry_cast.json()["house_code"] == "GRY"
+    assert gry_cast.json()["casts_used"] == 1
+
+
+
 
 
 

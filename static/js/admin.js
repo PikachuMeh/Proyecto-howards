@@ -119,6 +119,43 @@ class AdminApp {
             });
         }
 
+        // Student Detail Modal Buttons
+        const btnCloseDetail = document.getElementById("btn-close-detail");
+        if (btnCloseDetail) {
+            btnCloseDetail.addEventListener("click", () => this.hideModal("modal-student-detail"));
+        }
+        const btnDetailEdit = document.getElementById("btn-detail-edit-points");
+        if (btnDetailEdit) {
+            btnDetailEdit.addEventListener("click", () => {
+                if (this.activeDetailParticipant) {
+                    const participantId = this.activeDetailParticipant.id;
+                    this.hideModal("modal-student-detail");
+                    this.openEditPointsModal(participantId);
+                }
+            });
+        }
+        const btnDetailReassign = document.getElementById("btn-detail-reassign");
+        if (btnDetailReassign) {
+            btnDetailReassign.addEventListener("click", () => {
+                if (this.activeDetailParticipant) {
+                    const participantId = this.activeDetailParticipant.id;
+                    const participantName = this.activeDetailParticipant.display_name;
+                    this.hideModal("modal-student-detail");
+                    this.openReassignModal(participantId, participantName);
+                }
+            });
+        }
+        const btnDetailDelete = document.getElementById("btn-detail-delete");
+        if (btnDetailDelete) {
+            btnDetailDelete.addEventListener("click", async () => {
+                if (this.activeDetailParticipant) {
+                    const pid = this.activeDetailParticipant.id;
+                    this.hideModal("modal-student-detail");
+                    await this.deleteParticipant(pid);
+                }
+            });
+        }
+
         // Modals Buttons
         const btnCancelEditPts = document.getElementById("btn-cancel-edit-points");
         if (btnCancelEditPts) {
@@ -164,6 +201,12 @@ class AdminApp {
                     this.renderQuestions();
                 } else {
                     this.loadParticipants();
+                }
+                
+                // Only update student detail text if modal is ALREADY actively open on screen
+                const detailModal = document.getElementById("modal-student-detail");
+                if (detailModal && !detailModal.classList.contains("hidden") && detailModal.style.display !== "none" && this.activeDetailParticipant) {
+                    this.populateStudentDetail(this.activeDetailParticipant);
                 }
             } else {
                 const errEl = document.getElementById("login-error");
@@ -356,34 +399,177 @@ class AdminApp {
             return;
         }
 
-        const crestIcons = { "GRY": "🦁", "RAV": "🦅", "HUF": "🦡", "SLY": "🐍" };
+        const crestImages = {
+            "GRY": "/static/images/crest_gryffindor.jpg",
+            "RAV": "/static/images/crest_ravenclaw.jpg",
+            "HUF": "/static/images/crest_hufflepuff.jpg",
+            "SLY": "/static/images/crest_slytherin.jpg"
+        };
 
         list.forEach(p => {
             const tr = document.createElement("tr");
+            tr.className = "clickable-row";
+            tr.setAttribute("title", window.i18n.t("btn_view_profile"));
+
+            const crestImgTag = (p.house_code && crestImages[p.house_code]) 
+                ? `<img src="${crestImages[p.house_code]}" class="crest-img-sm" style="margin-right: 4px;" alt="${p.house_name}">` 
+                : '';
 
             const houseHtml = p.house_code 
-                ? `<span class="house-tag ${p.house_code}">${crestIcons[p.house_code] || ''} ${p.house_name}</span>
+                ? `<span class="house-tag ${p.house_code}">${crestImgTag} ${p.house_name}</span>
                    ${p.manual_override ? `<span class="manual-badge">${window.i18n.t('badge_manual')}</span>` : ''}`
                 : `<span style="color: var(--text-muted);">${window.i18n.t('not_sorted_yet')} (${p.answered_questions}/6)</span>`;
 
-            const spellBadge = p.spells_cast > 0
-                ? `<span title="${p.spells_cast} spells cast (${p.spell_points_won} pts)" style="display:inline-block; font-size:0.75rem; background:rgba(245,197,24,0.18); border:1px solid var(--gold-border); color:#fef08a; padding:2px 6px; border-radius:10px; margin-left:6px;">🔮 ${p.spells_cast}/2</span>`
-                : '';
+            const ptsWon = (p.spell_points_won !== null && p.spell_points_won !== undefined)
+                ? ((p.spell_points_won % 1 === 0) ? p.spell_points_won : Number(p.spell_points_won).toFixed(1))
+                : 0;
+            const houseCupPtsHtml = `<strong style="color: var(--gold-primary); font-size: 1.05rem;">+${ptsWon} pts</strong>`;
+            const spellsHtml = `<span style="color: var(--text-light); font-size: 0.9rem;">🔮 ${p.spells_cast || 0}/2</span>`;
 
             tr.innerHTML = `
-                <td>#${p.id}</td>
-                <td><strong>${this.escapeHtml(p.display_name)}</strong>${spellBadge}</td>
-                <td><span style="text-transform:uppercase; font-size:0.8rem; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">${p.preferred_lang || 'en'}</span></td>
+                <td><strong>#${p.id}</strong></td>
+                <td><strong style="font-size: 1.02rem; color: #ffffff;">${this.escapeHtml(p.display_name)}</strong></td>
                 <td>${houseHtml}</td>
-                <td>${p.total_score !== null && p.total_score !== undefined ? p.total_score + ' pts' : '—'}</td>
-                <td>${p.assigned_at ? this.formatDateTime(p.assigned_at) : '—'}</td>
+                <td>${houseCupPtsHtml}</td>
+                <td>${spellsHtml}</td>
                 <td class="actions-cell">
-                    <button type="button" class="btn-outline small-btn" onclick="window.adminApp.openReassignModal(${p.id}, '${this.escapeHtml(p.display_name)}')">${window.i18n.t('btn_reassign')}</button>
-                    <button type="button" class="btn-danger small-btn" onclick="window.adminApp.deleteParticipant(${p.id})">${window.i18n.t('btn_delete')}</button>
+                    <button type="button" class="btn-magical small-btn" onclick="event.stopPropagation(); window.adminApp.openStudentDetailById(${p.id})">${window.i18n.t('btn_view_profile')}</button>
+                    <button type="button" class="btn-outline small-btn" style="border-color: var(--gold-primary); color: var(--gold-primary);" onclick="event.stopPropagation(); window.adminApp.openEditPointsModal(${p.id})">${window.i18n.t('btn_edit_points')}</button>
                 </td>
             `;
+
+            tr.addEventListener("click", () => {
+                this.openStudentDetail(p);
+            });
+
             tbody.appendChild(tr);
         });
+    }
+
+    openStudentDetailById(participantId) {
+        const p = this.participants.find(item => item.id === participantId);
+        if (p) {
+            this.openStudentDetail(p);
+        }
+    }
+
+    openStudentDetail(p) {
+        this.activeDetailParticipant = p;
+        this.populateStudentDetail(p);
+        this.showModal("modal-student-detail");
+    }
+
+    populateStudentDetail(p) {
+        const crestImages = {
+            "GRY": "/static/images/crest_gryffindor.jpg",
+            "RAV": "/static/images/crest_ravenclaw.jpg",
+            "HUF": "/static/images/crest_hufflepuff.jpg",
+            "SLY": "/static/images/crest_slytherin.jpg"
+        };
+
+        const famousWizards = {
+            "en": {
+                "GRY": {
+                    name: "Prof. Albus Dumbledore",
+                    desc: "Revered Headmaster of Hogwarts, leader of the brave and one of the most powerful wizards of all time.",
+                    img: "/static/images/wizard_gryffindor.jpg",
+                    animal: "lion"
+                },
+                "SLY": {
+                    name: "Prof. Severus Snape",
+                    desc: "Potions Master and legendary leader of Slytherin, renowned for cunning intellect and unwavering resolve.",
+                    img: "/static/images/wizard_slytherin.jpg",
+                    animal: "serpent"
+                },
+                "RAV": {
+                    name: "Luna Lovegood",
+                    desc: "Distinguished Ravenclaw witch, celebrated for unconventional wisdom, open-minded insight, and boundless creativity.",
+                    img: "/static/images/wizard_ravenclaw.jpg",
+                    animal: "eagle"
+                },
+                "HUF": {
+                    name: "Newt Scamander",
+                    desc: "Renowned Magizoologist and Hufflepuff alumnus, remembered for boundless compassion toward all magical creatures.",
+                    img: "/static/images/wizard_hufflepuff.jpg",
+                    animal: "badger"
+                }
+            },
+            "de": {
+                "GRY": {
+                    name: "Prof. Albus Dumbledore",
+                    desc: "Verehrter Schulleiter von Hogwarts, Anführer der Tapferen und einer der mächtigsten Zauberer aller Zeiten.",
+                    img: "/static/images/wizard_gryffindor.jpg",
+                    animal: "lion"
+                },
+                "SLY": {
+                    name: "Prof. Severus Snape",
+                    desc: "Zaubertrankmeister und legendärer Leiter von Slytherin, bekannt für scharfsinnigen Verstand und tiefe Loyalität.",
+                    img: "/static/images/wizard_slytherin.jpg",
+                    animal: "serpent"
+                },
+                "RAV": {
+                    name: "Luna Lovegood",
+                    desc: "Hervorragende Hexe aus Ravenclaw, gefeiert für unkonventionelle Weisheit, Offenheit und schöpferischen Geist.",
+                    img: "/static/images/wizard_ravenclaw.jpg",
+                    animal: "eagle"
+                },
+                "HUF": {
+                    name: "Newt Scamander",
+                    desc: "Renommierter Magizoologe und Hufflepuff-Absolvent, geschätzt für grenzenloses Mitgefühl für alle magischen Wesen.",
+                    img: "/static/images/wizard_hufflepuff.jpg",
+                    animal: "badger"
+                }
+            }
+        };
+
+        const currentLang = window.i18n.getLang() === "de" ? "de" : "en";
+        const houseCode = p.house_code || "GRY";
+        const wizardData = (famousWizards[currentLang] && famousWizards[currentLang][houseCode]) || famousWizards["en"]["GRY"];
+
+        const crestEl = document.getElementById("detail-student-crest");
+        const nameEl = document.getElementById("detail-student-name");
+        const badgeEl = document.getElementById("detail-student-house-badge");
+        const cupPtsEl = document.getElementById("detail-student-cup-pts");
+        const spellsEl = document.getElementById("detail-student-spells");
+        const quizEl = document.getElementById("detail-student-quiz");
+        const langEl = document.getElementById("detail-student-lang");
+        const dateEl = document.getElementById("detail-student-date");
+        const watermarkEl = document.getElementById("detail-animal-watermark");
+
+        const wizardImgEl = document.getElementById("detail-famous-wizard-img");
+        const wizardNameEl = document.getElementById("detail-famous-wizard-name");
+        const wizardDescEl = document.getElementById("detail-famous-wizard-desc");
+
+        if (crestEl) {
+            crestEl.src = crestImages[p.house_code] || "/static/images/sorting_hat.jpg";
+        }
+        if (nameEl) {
+            nameEl.textContent = p.display_name || "Wizard";
+        }
+        if (badgeEl) {
+            badgeEl.className = `house-tag ${p.house_code || 'GRY'}`;
+            badgeEl.textContent = p.house_name || window.i18n.t("not_sorted_yet");
+        }
+
+        if (watermarkEl) {
+            watermarkEl.className = `arch-watermark-silhouette ${wizardData.animal}`;
+        }
+
+        if (wizardImgEl) wizardImgEl.src = wizardData.img;
+        if (wizardNameEl) wizardNameEl.textContent = wizardData.name;
+        if (wizardDescEl) wizardDescEl.textContent = wizardData.desc;
+
+        const ptsWon = (p.spell_points_won !== null && p.spell_points_won !== undefined)
+            ? ((p.spell_points_won % 1 === 0) ? p.spell_points_won : Number(p.spell_points_won).toFixed(1))
+            : 0;
+
+        if (cupPtsEl) cupPtsEl.textContent = `+${ptsWon} pts 🏆`;
+        if (spellsEl) spellsEl.textContent = window.i18n.t("lbl_profile_spells_cast_val", { count: p.spells_cast || 0 });
+        if (quizEl) quizEl.textContent = p.total_score !== null && p.total_score !== undefined ? `${p.total_score} pts` : "—";
+        if (langEl) langEl.textContent = (p.preferred_lang || "en").toUpperCase();
+        if (dateEl) dateEl.textContent = p.assigned_at ? this.formatDateTime(p.assigned_at) : window.i18n.t("lbl_profile_not_assigned");
+
+        window.i18n.applyTranslations();
     }
 
     formatDateTime(dateStr) {
@@ -416,13 +602,26 @@ class AdminApp {
 
     openReassignModal(participantId, name) {
         this.selectedParticipantId = participantId;
-        document.getElementById("modal-reassign-participant").textContent = `Participant: ${name}`;
+        const isDe = window.i18n.getLang() === "de";
+        const participantLabel = document.getElementById("modal-reassign-participant");
+        if (participantLabel) {
+            participantLabel.textContent = `${isDe ? 'Teilnehmer' : 'Participant'}: ${name}`;
+        }
+
+        // Find participant to pre-select their current house
+        const p = this.participants.find(item => item.id === participantId);
+        const houseMapToId = { "GRY": 1, "RAV": 2, "HUF": 3, "SLY": 4 };
+        const currentHouseId = (p && p.house_code) ? houseMapToId[p.house_code] : null;
+
+        document.querySelectorAll('input[name="reassign-house"]').forEach(radio => {
+            radio.checked = (currentHouseId !== null && parseInt(radio.value, 10) === currentHouseId);
+        });
 
         // Compute current house occupancies
         const counts = { "GRY": 0, "RAV": 0, "HUF": 0, "SLY": 0 };
-        this.participants.forEach(p => {
-            if (p.house_code && counts[p.house_code] !== undefined) {
-                counts[p.house_code]++;
+        this.participants.forEach(item => {
+            if (item.house_code && counts[item.house_code] !== undefined) {
+                counts[item.house_code]++;
             }
         });
 
@@ -713,14 +912,19 @@ class AdminApp {
                 const container = document.getElementById("stats-content");
                 const lang = window.i18n.getLang();
 
-                const crestIcons = { "GRY": "🦁", "RAV": "🦅", "HUF": "🦡", "SLY": "🐍" };
+                const crestImages = {
+                    "GRY": "/static/images/crest_gryffindor.jpg",
+                    "RAV": "/static/images/crest_ravenclaw.jpg",
+                    "HUF": "/static/images/crest_hufflepuff.jpg",
+                    "SLY": "/static/images/crest_slytherin.jpg"
+                };
 
                 let housesHtml = (data.house_distribution || []).map(h => {
                     const houseName = lang === "de" ? h.name_de : h.name_en;
                     const percent = data.total_assigned > 0 ? Math.round((h.total / data.total_assigned) * 100) : 0;
                     return `
                         <div class="stats-row">
-                            <span>${crestIcons[h.code] || ''} <strong>${houseName}</strong></span>
+                            <span><img src="${crestImages[h.code] || ''}" class="crest-img-sm" style="margin-right: 6px;" alt="${houseName}"> <strong>${houseName}</strong></span>
                             <strong>${h.total} (${percent}%)</strong>
                         </div>
                     `;
@@ -732,7 +936,9 @@ class AdminApp {
                     largestHouseHtml = `
                         <div class="stats-row" style="background: rgba(245, 197, 24, 0.2); border: 1px solid var(--gold-primary);">
                             <span>🏆 ${lang === 'de' ? 'Größtes Haus des Abends' : 'Largest House of the Night'}:</span>
-                            <strong style="color: var(--gold-primary); font-size: 1.1rem;">${crestIcons[data.largest_house.code] || ''} ${lName} (${data.largest_house.total})</strong>
+                            <strong style="color: var(--gold-primary); font-size: 1.1rem; display: inline-flex; align-items: center; gap: 6px;">
+                                <img src="${crestImages[data.largest_house.code] || ''}" class="crest-img-sm" alt="${lName}"> ${lName} (${data.largest_house.total})
+                            </strong>
                         </div>
                     `;
                 }
@@ -764,11 +970,13 @@ class AdminApp {
                     const ptsStr = (h.game_points % 1 === 0) ? h.game_points : Number(h.game_points).toFixed(1);
                     return `
                         <div class="stats-row">
-                            <span>${crestIcons[h.code] || ''} <strong>${houseName}</strong></span>
+                            <span><img src="${crestImages[h.code] || ''}" class="crest-img-sm" style="margin-right: 6px;" alt="${houseName}"> <strong>${houseName}</strong></span>
                             <span><strong>${ptsStr} pts</strong> <small style="color: var(--text-muted);">(${h.spells_cast || 0} ${lang === 'de' ? 'Zauber' : 'spells'})</small></span>
                         </div>
                     `;
                 }).join("");
+
+                const totalSpellPtsStr = (data.total_spell_points % 1 === 0) ? data.total_spell_points : Number(data.total_spell_points).toFixed(1);
 
                 container.innerHTML = `
                     <div class="stats-row" style="background: rgba(255, 255, 255, 0.05);">
@@ -781,7 +989,7 @@ class AdminApp {
                     </div>
                     <div class="stats-row" style="background: rgba(245, 197, 24, 0.15); border: 1px solid rgba(245, 197, 24, 0.3);">
                         <span>🔮 ${lang === 'de' ? 'Gesamte Zauber gewirkt' : 'Total Spells Cast'}:</span>
-                        <strong style="color: var(--gold-primary);">${data.total_spells_cast || 0} (${data.total_spell_points || 0} pts)</strong>
+                        <strong style="color: var(--gold-primary);">${data.total_spells_cast || 0} (${totalSpellPtsStr} pts)</strong>
                     </div>
                     ${largestHouseHtml}
                     ${divisiveHtml}
@@ -793,8 +1001,11 @@ class AdminApp {
                 `;
 
                 this.showModal("modal-stats");
+            } else {
+                this.showToast(window.i18n.getLang() === "de" ? "Statistiken konnten nicht geladen werden." : "Failed to load statistics.", "error");
             }
         } catch (e) {
+            console.error("handleShowStats error:", e);
             this.showToast(window.i18n.getLang() === "de" ? "Statistiken konnten nicht geladen werden." : "Failed to load statistics.", "error");
         }
     }
@@ -813,6 +1024,9 @@ class AdminApp {
             m.style.display = "none";
             m.classList.add("hidden");
         }
+        if (id === "modal-student-detail") {
+            this.activeDetailParticipant = null;
+        }
     }
 
     hideAllModals() {
@@ -820,6 +1034,7 @@ class AdminApp {
             m.style.display = "none";
             m.classList.add("hidden");
         });
+        this.activeDetailParticipant = null;
     }
 
     escapeHtml(str) {
@@ -889,10 +1104,10 @@ class AdminApp {
                 const sly = scores["SLY"] || 0;
 
                 const pills = [];
-                if (gry > 0) pills.push(`<span class="score-pill gry">🦁 +${gry}</span>`);
-                if (rav > 0) pills.push(`<span class="score-pill rav">🦅 +${rav}</span>`);
-                if (huf > 0) pills.push(`<span class="score-pill huf">🦡 +${huf}</span>`);
-                if (sly > 0) pills.push(`<span class="score-pill sly">🐍 +${sly}</span>`);
+                if (gry > 0) pills.push(`<span class="score-pill gry"><img src="/static/images/crest_gryffindor.jpg" class="crest-img-sm" style="width:16px; height:16px;"> +${gry}</span>`);
+                if (rav > 0) pills.push(`<span class="score-pill rav"><img src="/static/images/crest_ravenclaw.jpg" class="crest-img-sm" style="width:16px; height:16px;"> +${rav}</span>`);
+                if (huf > 0) pills.push(`<span class="score-pill huf"><img src="/static/images/crest_hufflepuff.jpg" class="crest-img-sm" style="width:16px; height:16px;"> +${huf}</span>`);
+                if (sly > 0) pills.push(`<span class="score-pill sly"><img src="/static/images/crest_slytherin.jpg" class="crest-img-sm" style="width:16px; height:16px;"> +${sly}</span>`);
                 if (pills.length === 0) pills.push(`<span class="score-pill" style="color: var(--text-muted);">0 pts</span>`);
 
                 return `
@@ -956,10 +1171,10 @@ class AdminApp {
 
         const markers = ["A", "B", "C", "D"];
         const defaultHouses = [
-            { code: "GRY", name: "🦁 Gryffindor", class: "gry" },
-            { code: "RAV", name: "🦅 Ravenclaw", class: "rav" },
-            { code: "HUF", name: "🦡 Hufflepuff", class: "huf" },
-            { code: "SLY", name: "🐍 Slytherin", class: "sly" }
+            { code: "GRY", name: "Gryffindor", crest: "/static/images/crest_gryffindor.jpg", class: "gry" },
+            { code: "RAV", name: "Ravenclaw", crest: "/static/images/crest_ravenclaw.jpg", class: "rav" },
+            { code: "HUF", name: "Hufflepuff", crest: "/static/images/crest_hufflepuff.jpg", class: "huf" },
+            { code: "SLY", name: "Slytherin", crest: "/static/images/crest_slytherin.jpg", class: "sly" }
         ];
 
         let html = "";
@@ -971,7 +1186,7 @@ class AdminApp {
                 const scoreVal = scores[h.code] !== undefined ? scores[h.code] : (opt[`score_${h.code.toLowerCase()}`] || 0);
                 return `
                     <div class="score-input-item ${h.class}">
-                        <label>${h.name}</label>
+                        <label><img src="${h.crest}" class="crest-img-sm" style="width:16px; height:16px; vertical-align:middle;"> ${h.name}</label>
                         <input type="number" class="score-input opt-score-${h.code.toLowerCase()}" data-house="${h.code}" min="0" max="10" value="${scoreVal}">
                     </div>
                 `;
@@ -1124,9 +1339,77 @@ class AdminApp {
             }
         }, "danger");
     }
+
+    openEditPointsModal(participantId) {
+        const p = this.participants.find(item => item.id === participantId);
+        if (!p) return;
+
+        document.getElementById("edit-points-participant-id").value = p.id;
+        document.getElementById("modal-edit-points-participant").textContent = 
+            `Participant: ${p.display_name} (${p.house_name || 'Not sorted'})`;
+
+        const houseSelect = document.getElementById("edit-points-house-id");
+        const gamePtsInput = document.getElementById("edit-points-game-pts");
+        const sortingScoreInput = document.getElementById("edit-points-sorting-score");
+        const spellsCastInput = document.getElementById("edit-points-spells-cast");
+
+        if (houseSelect) houseSelect.value = p.house_id || 1;
+        if (gamePtsInput) gamePtsInput.value = p.spell_points_won || 0;
+        if (sortingScoreInput) sortingScoreInput.value = p.total_score || 0;
+        if (spellsCastInput) spellsCastInput.value = `${Math.min(p.spells_cast || 0, 2)}`;
+
+        this.showModal("modal-edit-points");
+    }
+
+    adjustGamePoints(delta) {
+        const input = document.getElementById("edit-points-game-pts");
+        if (!input) return;
+        let val = parseFloat(input.value) || 0;
+        val = Math.max(0, val + delta);
+        input.value = (val % 1 === 0) ? val : Number(val.toFixed(1));
+    }
+
+    async handleSaveEditPoints() {
+        const id = parseInt(document.getElementById("edit-points-participant-id").value, 10);
+        const houseId = parseInt(document.getElementById("edit-points-house-id").value, 10);
+        const gamePts = parseFloat(document.getElementById("edit-points-game-pts").value) || 0;
+        const sortingScore = parseInt(document.getElementById("edit-points-sorting-score").value, 10);
+        const spellsCast = parseInt(document.getElementById("edit-points-spells-cast").value, 10);
+
+        const btn = document.getElementById("btn-save-edit-points");
+        if (btn) btn.disabled = true;
+
+        try {
+            const res = await fetch(`/api/admin/participants/${id}/points`, {
+                method: "PATCH",
+                headers: {
+                    ...this.getAuthHeaders(),
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    house_id: isNaN(houseId) ? null : houseId,
+                    game_points: gamePts,
+                    sorting_score: isNaN(sortingScore) ? 0 : sortingScore,
+                    spells_cast: isNaN(spellsCast) ? 0 : spellsCast
+                })
+            });
+
+            if (res.ok) {
+                this.hideModal("modal-edit-points");
+                this.showToast(window.i18n.t("msg_points_updated"), "success");
+                await this.loadParticipants();
+            } else {
+                const err = await res.json().catch(() => ({}));
+                this.showToast(err.detail || "Failed to update points", "error");
+            }
+        } catch (e) {
+            this.showToast("Connection error while updating points", "error");
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
     window.adminApp = new AdminApp();
 });
-

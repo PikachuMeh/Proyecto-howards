@@ -1,13 +1,15 @@
-/* Guest Questionnaire Styles */
-
 .app-header {
-    background: rgba(11, 13, 23, 0.85);
+    background: rgba(11, 13, 23, 0.96);
     border-bottom: 1px solid var(--border-subtle);
     padding: 12px 16px;
     position: sticky;
     top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
     z-index: 100;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.6);
 }
 
 .header-content {
@@ -60,94 +62,136 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Registration Card */
+.guest-body {
+    background-color: #060812;
+    min-height: 100vh;
+    position: relative;
+}
+
+.castle-background-overlay {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at 50% 20%, rgba(35, 20, 55, 0.45) 0%, rgba(5, 7, 15, 0.95) 85%),
+                url('/static/images/great_hall_bg.jpg') center top / cover no-repeat;
+    opacity: 0.32;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Registration Card - Grand Hogwarts Entrance Portal */
 .registration-card {
-    padding: 32px 24px;
+    padding: 36px 28px;
     text-align: center;
+    border: 1.5px solid var(--gold-border);
+    background: linear-gradient(160deg, rgba(16, 22, 42, 0.96) 0%, rgba(8, 10, 22, 0.98) 100%);
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.85), 0 0 35px var(--gold-glow), inset 0 0 30px rgba(212, 175, 55, 0.08);
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
 }
 
-.hat-avatar-container {
-    margin-bottom: 16px;
+.registration-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, transparent, var(--gold-primary), #fff, var(--gold-primary), transparent);
 }
 
-.hat-avatar {
-    font-size: 3.5rem;
-    display: inline-block;
-    filter: drop-shadow(0 0 15px var(--gold-glow));
-    animation: floating 3s ease-in-out infinite;
+.hat-hero-container {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
-@keyframes floating {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
+.sorting-hat-hero-img {
+    width: 140px;
+    height: 140px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid var(--gold-border);
+    box-shadow: 0 0 25px var(--gold-glow), 0 8px 20px rgba(0,0,0,0.8);
+    animation: floatingHat 3.5s ease-in-out infinite;
+}
+
+.sorting-hat-deliberating-img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid var(--gold-border);
+    box-shadow: 0 0 30px var(--gold-glow);
+    animation: thinkingPulse 2s ease-in-out infinite;
+}
+
+@keyframes floatingHat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-8px) rotate(2deg); }
+}
+
+@keyframes thinkingPulse {
+    0%, 100% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.06); filter: brightness(1.2) drop-shadow(0 0 20px #f5c518); }
 }
 
 .main-title {
-    font-size: 1.8rem;
-    margin-bottom: 8px;
+    font-size: 1.85rem;
+    margin-bottom: 6px;
 }
 
 .subtitle {
     color: var(--text-muted);
     font-size: 0.95rem;
-    margin-bottom: 28px;
+    margin-bottom: 24px;
+    font-family: var(--font-serif);
+    font-style: italic;
 }
 
 .reg-form {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 16px;
     text-align: left;
 }
 
 .form-group {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
 }
 
 .form-group label {
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: var(--gold-primary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--gold-light);
+    letter-spacing: 0.5px;
 }
 
 .form-group input {
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid var(--border-subtle);
-    color: var(--text-light);
+    background: rgba(4, 6, 14, 0.7);
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    color: #ffffff;
     padding: 12px 16px;
     border-radius: 8px;
     outline: none;
-    transition: border-color 0.2s;
+    font-size: 1rem;
+    transition: all 0.25s ease;
 }
 
 .form-group input:focus {
     border-color: var(--gold-primary);
-    box-shadow: 0 0 10px var(--gold-glow);
+    box-shadow: 0 0 15px var(--gold-glow);
+    background: rgba(8, 12, 24, 0.9);
 }
 
-.input-hint {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-}
-
-.full-width {
-    width: 100%;
-}
-
-.error-banner {
-    background: rgba(220, 38, 38, 0.2);
-    border: 1px solid rgba(220, 38, 38, 0.5);
-    color: #fca5a5;
-    padding: 10px 14px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    margin-top: 10px;
-}
-
-.hidden {
-    display: none !important;
+.glow-btn {
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+    letter-spacing: 1px;
+    margin-top: 8px;
 }
 
 /* Questionnaire Card */
@@ -155,43 +199,59 @@
     padding: 24px 20px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 18px;
+    border: 1px solid var(--border-subtle);
+    background: rgba(14, 18, 33, 0.96);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
 }
 
 .quiz-header {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    align-items: center;
+    gap: 10px;
+}
+
+.progress-pill-badge {
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--gold-border);
+    padding: 4px 18px;
+    border-radius: 20px;
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
 }
 
 .progress-text {
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     color: var(--gold-primary);
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1.5px;
+    font-family: var(--font-heading);
 }
 
 .progress-bar-bg {
     width: 100%;
-    height: 6px;
-    background: rgba(255, 255, 255, 0.1);
+    height: 5px;
+    background: rgba(255, 255, 255, 0.08);
     border-radius: 3px;
     overflow: hidden;
 }
 
 .progress-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, #d3a625, #f5c518);
-    transition: width 0.3s ease;
+    background: linear-gradient(90deg, #b8860b, #f5c518, #fef08a);
+    transition: width 0.35s ease;
+    box-shadow: 0 0 8px var(--gold-glow);
 }
 
 .question-title {
     font-family: var(--font-heading);
     font-size: 1.25rem;
-    line-height: 1.4;
+    line-height: 1.45;
     color: #ffffff;
-    margin-bottom: 20px;
+    text-align: center;
+    margin: 8px 0 16px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
 }
 
 .options-grid {
@@ -200,190 +260,309 @@
     gap: 12px;
 }
 
+/* 4 Themed Velvet Option Cards */
 .option-card {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
-    padding: 14px 16px;
-    min-height: 54px;
+    padding: 12px 16px;
+    min-height: 64px;
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 14px;
-    transition: all 0.2s ease;
+    transition: all 0.25s cubic-bezier(0.165, 0.84, 0.44, 1);
     user-select: none;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(8px);
 }
 
 .option-card:hover {
-    background: rgba(245, 197, 24, 0.08);
-    border-color: rgba(245, 197, 24, 0.3);
+    transform: translateY(-2px) scale(1.01);
+    filter: brightness(1.15);
 }
 
-.option-card.selected {
-    background: rgba(245, 197, 24, 0.15);
-    border-color: var(--gold-primary);
-    box-shadow: 0 0 12px var(--gold-glow);
+/* Pixel-Art Dithering Overlay for Option Cards */
+.option-dither-overlay {
+    position: absolute;
+    inset: 0;
+    background-image: url('/static/images/pixel_dither_pattern.svg');
+    background-repeat: repeat;
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 1;
 }
 
-.option-marker {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: 2px solid var(--border-subtle);
+/* Animal Watermark Silhouette in Option Cards */
+.option-watermark {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 60px;
+    height: 60px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0.14;
+    pointer-events: none;
+    z-index: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.option-watermark.lion {
+    background-image: url('/static/images/silhouette_lion.svg');
+    color: #fca5a5;
+}
+.option-watermark.serpent {
+    background-image: url('/static/images/silhouette_serpent.svg');
+    color: #86efac;
+}
+.option-watermark.eagle {
+    background-image: url('/static/images/silhouette_eagle.svg');
+    color: #93c5fd;
+}
+.option-watermark.badger {
+    background-image: url('/static/images/silhouette_badger.svg');
+    color: #fde047;
+}
+
+.option-card:hover .option-watermark,
+.option-card.selected .option-watermark {
+    opacity: 0.32;
+    transform: translateY(-50%) scale(1.18);
+}
+
+/* Gryffindor Theme */
+.option-card.theme-gry {
+    background: linear-gradient(135deg, rgba(140, 10, 18, 0.78) 0%, rgba(55, 4, 8, 0.9) 100%);
+    border: 1.5px solid rgba(212, 175, 55, 0.45);
+    box-shadow: 0 4px 15px rgba(120, 10, 15, 0.3);
+}
+.option-card.theme-gry:hover, .option-card.theme-gry.selected {
+    border-color: #f5c518;
+    box-shadow: 0 0 20px rgba(220, 38, 38, 0.5), inset 0 0 15px rgba(245, 197, 24, 0.2);
+}
+
+/* Slytherin Theme */
+.option-card.theme-sly {
+    background: linear-gradient(135deg, rgba(16, 75, 38, 0.78) 0%, rgba(4, 28, 14, 0.9) 100%);
+    border: 1.5px solid rgba(34, 197, 94, 0.4);
+    box-shadow: 0 4px 15px rgba(16, 60, 32, 0.3);
+}
+.option-card.theme-sly:hover, .option-card.theme-sly.selected {
+    border-color: #4ade80;
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.5), inset 0 0 15px rgba(74, 222, 128, 0.2);
+}
+
+/* Ravenclaw Theme */
+.option-card.theme-rav {
+    background: linear-gradient(135deg, rgba(12, 50, 100, 0.78) 0%, rgba(4, 18, 42, 0.9) 100%);
+    border: 1.5px solid rgba(59, 130, 246, 0.45);
+    box-shadow: 0 4px 15px rgba(12, 40, 75, 0.3);
+}
+.option-card.theme-rav:hover, .option-card.theme-rav.selected {
+    border-color: #60a5fa;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5), inset 0 0 15px rgba(96, 165, 250, 0.2);
+}
+
+/* Hufflepuff Theme */
+.option-card.theme-huf {
+    background: linear-gradient(135deg, rgba(155, 105, 12, 0.78) 0%, rgba(50, 32, 4, 0.9) 100%);
+    border: 1.5px solid rgba(245, 158, 11, 0.45);
+    box-shadow: 0 4px 15px rgba(140, 95, 10, 0.3);
+}
+.option-card.theme-huf:hover, .option-card.theme-huf.selected {
+    border-color: #fbbf24;
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.5), inset 0 0 15px rgba(251, 191, 36, 0.2);
+}
+
+.option-crest-box {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
-    font-size: 0.85rem;
-    flex-shrink: 0;
-    color: var(--gold-primary);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-.option-card.selected .option-marker {
-    background: var(--gold-primary);
-    color: #111;
-    border-color: var(--gold-primary);
+.option-crest-img {
+    width: 34px;
+    height: 34px;
+    object-fit: cover;
+    border-radius: 6px;
 }
 
 .option-text {
-    font-size: 0.95rem;
-    line-height: 1.35;
-    color: var(--text-light);
-}
-
-.quiz-footer {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    margin-top: 10px;
-}
-
-.quiz-footer button {
     flex: 1;
+    font-size: 0.96rem;
+    line-height: 1.35;
+    color: #ffffff;
+    font-family: var(--font-body);
+    font-weight: 500;
 }
 
-/* Deliberation / Suspense Screen */
-.deliberation-card {
-    padding: 40px 24px;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-}
-
-.hat-thinking-anim {
-    position: relative;
-    display: inline-block;
-}
-
-.huge-hat {
-    font-size: 5rem;
-    display: inline-block;
-    animation: thinkingWobble 2s ease-in-out infinite;
-}
-
-@keyframes thinkingWobble {
-    0%, 100% { transform: rotate(0deg) scale(1); }
-    25% { transform: rotate(-6deg) scale(1.05); }
-    75% { transform: rotate(6deg) scale(1.05); }
-}
-
-.magic-sparkles {
-    position: absolute;
-    top: -10px;
-    right: -10px;
-    font-size: 2rem;
-    animation: sparkleGlow 1.5s ease-in-out infinite alternate;
-}
-
-@keyframes sparkleGlow {
-    from { opacity: 0.3; transform: scale(0.8); }
-    to { opacity: 1; transform: scale(1.2); }
-}
-
-.deliberation-quote {
-    font-style: italic;
-    color: var(--text-muted);
-    font-size: 1rem;
-    line-height: 1.5;
-    max-width: 400px;
-}
-
-.deliberation-spinner {
-    width: 36px;
-    height: 36px;
-    border: 3px solid rgba(245, 197, 24, 0.2);
-    border-top-color: var(--gold-primary);
+.option-check-circle {
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
-    animation: spin 1s linear infinite;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
+    transition: all 0.2s ease;
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
+.option-card.selected .option-check-circle {
+    background: var(--gold-primary);
+    border-color: #ffffff;
+    box-shadow: 0 0 10px var(--gold-glow);
+    position: relative;
+}
+
+.option-card.selected .option-check-circle::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #111;
+    font-size: 0.75rem;
+    font-weight: bold;
 }
 
 /* Result Card */
 .result-card {
     padding: 36px 20px;
     text-align: center;
+    border: 1px solid var(--border-subtle);
+    background: rgba(14, 18, 33, 0.96);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.8);
     position: relative;
     overflow: hidden;
 }
 
-.house-badge-container {
+.result-watermark-silhouette {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 220px;
+    height: 220px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0.14;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.result-watermark-silhouette.lion {
+    background-image: url('/static/images/silhouette_lion.svg');
+    color: #fca5a5;
+}
+.result-watermark-silhouette.serpent {
+    background-image: url('/static/images/silhouette_serpent.svg');
+    color: #86efac;
+}
+.result-watermark-silhouette.eagle {
+    background-image: url('/static/images/silhouette_eagle.svg');
+    color: #93c5fd;
+}
+.result-watermark-silhouette.badger {
+    background-image: url('/static/images/silhouette_badger.svg');
+    color: #fde047;
+}
+
+.result-header-text {
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    color: var(--gold-primary);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.result-wizard-name {
+    font-family: var(--font-heading);
+    font-size: 2.2rem;
+    color: #ffffff;
+    text-shadow: 0 0 20px var(--gold-glow);
+    letter-spacing: 2px;
     margin-bottom: 12px;
 }
 
-.house-crest-icon {
-    font-size: 4.5rem;
-    display: inline-block;
-    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.4));
-    animation: crestPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-@keyframes crestPop {
-    0% { transform: scale(0.3) rotate(-15deg); opacity: 0; }
-    100% { transform: scale(1) rotate(0); opacity: 1; }
-}
-
 .result-intro {
-    font-size: 1rem;
+    font-family: var(--font-heading);
+    font-size: 0.95rem;
     color: var(--text-muted);
+    letter-spacing: 1.5px;
     text-transform: uppercase;
-    letter-spacing: 1px;
 }
 
 .result-house-title {
     font-family: var(--font-heading);
-    font-size: clamp(2rem, 6vw, 2.8rem);
-    font-weight: 700;
+    font-size: 2.5rem;
     letter-spacing: 3px;
-    margin: 10px 0 16px;
-    text-transform: uppercase;
+    margin: 4px 0 16px;
+    text-shadow: 0 0 25px currentColor;
+}
+
+.house-crest-showcase {
+    position: relative;
+    display: inline-block;
+    margin: 10px auto 20px;
+}
+
+.crest-aura {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 170px;
+    height: 170px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--gold-glow) 0%, transparent 70%);
+    animation: auraPulse 3s ease-in-out infinite alternate;
+    pointer-events: none;
+}
+
+@keyframes auraPulse {
+    0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.5; }
+    100% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+}
+
+.result-crest-artwork {
+    width: 140px;
+    height: 140px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 2px solid var(--gold-border);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.8), 0 0 20px var(--gold-glow);
+    position: relative;
+    z-index: 2;
+    animation: crestPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes crestPop {
+    0% { transform: scale(0.4) rotate(-10deg); opacity: 0; }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
 }
 
 .motto-box {
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--border-subtle);
-    border-radius: 12px;
-    padding: 16px;
-    margin: 16px 0;
-}
-
-.motto-box h4 {
-    font-size: 0.8rem;
-    color: var(--gold-primary);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 6px;
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .motto-text {
+    font-family: var(--font-serif);
     font-style: italic;
-    font-size: 0.95rem;
+    color: var(--gold-light);
+    font-size: 1rem;
     line-height: 1.4;
-    color: var(--text-light);
 }
 
 .breakdown-section {

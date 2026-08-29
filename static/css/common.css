@@ -1,32 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700;900&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap');
+
 :root {
-    --bg-dark: #0b0d17;
-    --bg-card: rgba(22, 27, 46, 0.92);
+    --bg-dark: #070913;
+    --bg-card: rgba(14, 18, 33, 0.94);
+    --bg-card-border: rgba(212, 175, 55, 0.35);
     --bg-parchment: #f6eedb;
     --text-parchment: #2c2214;
     --gold-primary: #f5c518;
-    --gold-glow: rgba(245, 197, 24, 0.4);
-    --gold-border: #d3a625;
-    --text-light: #f3f4f6;
-    --text-muted: #9ca3af;
-    --border-subtle: rgba(211, 166, 37, 0.3);
+    --gold-light: #fef08a;
+    --gold-glow: rgba(245, 197, 24, 0.5);
+    --gold-border: #d4af37;
+    --gold-dark: #8c6d1f;
+    --text-light: #f8fafc;
+    --text-muted: #94a3b8;
+    --border-subtle: rgba(212, 175, 55, 0.25);
     
-    --gry-color: #740001;
-    --gry-accent: #d3a625;
-    --gry-bg: rgba(116, 0, 1, 0.25);
+    --gry-color: #8b0000;
+    --gry-accent: #d4af37;
+    --gry-glow: rgba(220, 38, 38, 0.6);
+    --gry-bg: linear-gradient(180deg, rgba(120, 0, 0, 0.4) 0%, rgba(40, 0, 0, 0.7) 100%);
+    --gry-border: #991b1b;
     
-    --rav-color: #0e1a40;
+    --rav-color: #0c2340;
     --rav-accent: #946b2d;
-    --rav-bg: rgba(14, 26, 64, 0.35);
+    --rav-glow: rgba(59, 130, 246, 0.6);
+    --rav-bg: linear-gradient(180deg, rgba(12, 35, 64, 0.4) 0%, rgba(5, 15, 30, 0.7) 100%);
+    --rav-border: #1e40af;
     
-    --huf-color: #ecb939;
+    --huf-color: #d99b00;
     --huf-accent: #372e29;
-    --huf-bg: rgba(236, 185, 57, 0.25);
+    --huf-glow: rgba(245, 158, 11, 0.6);
+    --huf-bg: linear-gradient(180deg, rgba(160, 110, 0, 0.4) 0%, rgba(40, 30, 0, 0.7) 100%);
+    --huf-border: #b45309;
     
     --sly-color: #1a472a;
     --sly-accent: #aaaaaa;
-    --sly-bg: rgba(26, 71, 42, 0.3);
+    --sly-glow: rgba(34, 197, 94, 0.6);
+    --sly-bg: linear-gradient(180deg, rgba(20, 60, 35, 0.4) 0%, rgba(5, 25, 12, 0.7) 100%);
+    --sly-border: #166534;
 
-    --font-heading: 'Cinzel', 'Georgia', serif;
+    --font-heading: 'Cinzel', 'Playfair Display', 'Georgia', serif;
+    --font-decorative: 'Cinzel Decorative', 'Cinzel', serif;
+    --font-serif: 'Playfair Display', 'Georgia', serif;
     --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -40,9 +55,10 @@
 body {
     background-color: var(--bg-dark);
     background-image: 
-        radial-gradient(circle at 20% 20%, rgba(116, 0, 1, 0.15), transparent 40%),
-        radial-gradient(circle at 80% 80%, rgba(14, 26, 64, 0.2), transparent 40%),
-        radial-gradient(circle at 50% 50%, rgba(245, 197, 24, 0.05), transparent 60%);
+        radial-gradient(circle at 15% 15%, rgba(139, 0, 0, 0.15), transparent 45%),
+        radial-gradient(circle at 85% 15%, rgba(12, 35, 64, 0.2), transparent 45%),
+        radial-gradient(circle at 50% 80%, rgba(26, 71, 42, 0.15), transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.04), transparent 60%);
     background-attachment: fixed;
     color: var(--text-light);
     font-family: var(--font-body);
@@ -52,13 +68,12 @@ body {
     overflow-x: hidden;
 }
 
-/* Accessibility: AA contrast compliance */
+/* Accessibility & touch targets */
 a, button, input, select {
     font-family: inherit;
     font-size: 1rem;
 }
 
-/* Minimum 44px touch targets (NFR-03) */
 button, .btn, input[type="text"], input[type="password"] {
     min-height: 48px;
     border-radius: 8px;
@@ -66,37 +81,38 @@ button, .btn, input[type="text"], input[type="password"] {
 
 .lang-switch {
     display: inline-flex;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.6);
     border: 1px solid var(--border-subtle);
     border-radius: 20px;
-    padding: 4px;
+    padding: 3px;
     gap: 4px;
+    backdrop-filter: blur(8px);
 }
 
 .lang-btn {
     background: transparent;
     border: none;
     color: var(--text-muted);
-    padding: 6px 14px;
-    border-radius: 16px;
+    padding: 5px 12px;
+    border-radius: 14px;
     cursor: pointer;
-    font-weight: 600;
-    font-size: 0.85rem;
-    min-height: 32px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    min-height: 28px;
     transition: all 0.2s ease;
 }
 
 .lang-btn.active {
-    background: var(--gold-primary);
-    color: #111;
-    box-shadow: 0 0 10px var(--gold-glow);
+    background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold-primary) 100%);
+    color: #0b0d17;
+    box-shadow: 0 0 12px var(--gold-glow);
 }
 
 .gold-title {
     font-family: var(--font-heading);
     color: var(--gold-primary);
-    text-shadow: 0 0 12px var(--gold-glow);
-    letter-spacing: 1px;
+    text-shadow: 0 0 16px var(--gold-glow);
+    letter-spacing: 1.5px;
 }
 
 .card {
@@ -188,8 +204,40 @@ button, .btn, input[type="text"], input[type="password"] {
 }
 
 .modal-close-btn:hover {
-    color: var(--gold-primary);
+    color: #ffffff;
     background: rgba(255, 255, 255, 0.1);
+}
+
+/* Heraldic Crest Images */
+.crest-img {
+    object-fit: contain;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.7));
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.crest-img-sm {
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    vertical-align: middle;
+    display: inline-block;
+}
+
+.crest-img-md {
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+}
+
+.crest-img-lg {
+    width: 88px;
+    height: 88px;
+}
+
+.crest-img-xl {
+    width: 140px;
+    height: 140px;
+    filter: drop-shadow(0 0 25px var(--gold-glow));
 }
 
 /* Utility classes */
