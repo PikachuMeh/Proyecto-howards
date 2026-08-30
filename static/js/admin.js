@@ -850,7 +850,11 @@ class AdminApp {
                     const res = await fetch("/api/server-info");
                     if (res.ok) {
                         const info = await res.json();
-                        initialUrl = info.guest_url;
+                        if (info.local_ip && info.local_ip.startsWith("172.") && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+                            initialUrl = `${window.location.origin}/`;
+                        } else {
+                            initialUrl = info.guest_url;
+                        }
                     }
                 } catch (e) {}
             }
@@ -883,11 +887,15 @@ class AdminApp {
             const res = await fetch("/api/server-info");
             if (res.ok) {
                 const info = await res.json();
+                let urlToUse = info.guest_url;
+                if (info.local_ip && info.local_ip.startsWith("172.") && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+                    urlToUse = `${window.location.origin}/`;
+                }
                 const qrInput = document.getElementById("qr-url-input");
                 if (qrInput) {
-                    qrInput.value = info.guest_url;
+                    qrInput.value = urlToUse;
                 }
-                this.updateQrCode(info.guest_url);
+                this.updateQrCode(urlToUse);
             }
         } catch (e) {
             this.showToast(window.i18n.getLang() === "de" ? "Lokale IP konnte nicht erkannt werden." : "Could not detect local IP automatically.", "warning");

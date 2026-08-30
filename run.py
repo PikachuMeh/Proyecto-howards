@@ -18,10 +18,13 @@ def main():
     seed_database()
     print("\n✨ Magic Portals Ready:")
     print(f"  📱 Mobile Questionnaire (Local):   http://localhost:{PORT}/")
-    print(f"  🌐 Mobile Questionnaire (Wi-Fi):   http://{local_ip}:{PORT}/")
-    print(f"  📺 Public Screen (Projector/TV):   http://{local_ip}:{PORT}/screen")
-    print(f"  🏰 Admin Control Panel:            http://{local_ip}:{PORT}/admin (Password: alohomora)")
-    print(f"  📚 Interactive API Docs:          http://{local_ip}:{PORT}/docs")
+    print(f"  📺 Public Screen (Projector/TV):   http://localhost:{PORT}/screen")
+    print(f"  🏰 Admin Control Panel:            http://localhost:{PORT}/admin (Password: alohomora)")
+    if local_ip and not local_ip.startswith("172.") and not local_ip.startswith("127."):
+        print(f"  🌐 Mobile Questionnaire (Wi-Fi):   http://{local_ip}:{PORT}/")
+    else:
+        print(f"  🌐 For other devices on Wi-Fi:     http://<YOUR-PC-IP>:{PORT}/")
+    print(f"  📚 Interactive API Docs:          http://localhost:{PORT}/docs")
     print("=" * 60)
     print(f"🚀 Server listening on all interfaces: 0.0.0.0:{PORT}")
     print("Starting FastAPI Uvicorn Server...\n")

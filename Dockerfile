@@ -36,7 +36,7 @@ EXPOSE 8000
 
 # Healthcheck to ensure FastAPI app is responding
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/api/guest/questions || exit 1
+    CMD curl -f http://localhost:8000/health || exit 1
 
 # Start the application
 CMD ["python", "run.py"]
