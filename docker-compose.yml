@@ -1,14 +1,29 @@
+version: '3.8'
+
 services:
   sorting-hat:
-    build: .
-    container_name: sorting_hat_app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hogwarts-sorting-hat
     restart: unless-stopped
     ports:
       - "8000:8000"
-    volumes:
-      - ./data:/app/data
     environment:
-      - HOST=0.0.0.0
       - PORT=8000
+      - HOST=0.0.0.0
       - ADMIN_PASSWORD=alohomora
       - SECRET_KEY=gryffindor-ravenclaw-hufflepuff-slytherin-magic-key-2026
+      - RELOAD=false
+    volumes:
+      - sorting_hat_data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/guest/questions"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  sorting_hat_data:
+    name: sorting_hat_data

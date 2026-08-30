@@ -4,6 +4,7 @@ Usage:
     python run.py
 """
 
+import os
 import uvicorn
 from app.config import HOST, PORT, get_local_ip
 from app.seed import seed_database
@@ -25,13 +26,13 @@ def main():
     print(f"🚀 Server listening on all interfaces: 0.0.0.0:{PORT}")
     print("Starting FastAPI Uvicorn Server...\n")
 
+    reload_mode = os.getenv("RELOAD", "false").lower() in ("true", "1", "yes")
     uvicorn.run(
         "app.main:app",
         host=HOST,
         port=PORT,
-        reload=True
+        reload=reload_mode
     )
 
 if __name__ == "__main__":
     main()
-""" ola """

@@ -548,7 +548,13 @@ class AdminApp {
         }
         if (badgeEl) {
             badgeEl.className = `house-tag ${p.house_code || 'GRY'}`;
-            badgeEl.textContent = p.house_name || window.i18n.t("not_sorted_yet");
+            const houseNames = {
+                "GRY": "Gryffindor",
+                "RAV": "Ravenclaw",
+                "HUF": "Hufflepuff",
+                "SLY": "Slytherin"
+            };
+            badgeEl.textContent = p.house_code ? (houseNames[p.house_code] || p.house_name) : window.i18n.t("not_sorted_yet");
         }
 
         if (watermarkEl) {
@@ -1043,6 +1049,24 @@ class AdminApp {
         return div.innerHTML;
     }
 
+    showError(elementId, message) {
+        const el = document.getElementById(elementId);
+        if (el) {
+            el.textContent = message;
+            el.classList.remove("hidden");
+            el.style.display = "block";
+        }
+    }
+
+    clearError(elementId) {
+        const el = document.getElementById(elementId);
+        if (el) {
+            el.textContent = "";
+            el.classList.add("hidden");
+            el.style.display = "none";
+        }
+    }
+
     // --- Question Manager Methods ---
 
     switchTab(tabName) {
@@ -1090,6 +1114,7 @@ class AdminApp {
             return;
         }
 
+        const currentLang = window.i18n.getLang();
         const badgeLabel = window.i18n.t("question_badge") || "Question";
         const editLabel = window.i18n.t("btn_edit") || "Edit";
         const deleteLabel = window.i18n.t("btn_delete") || "Delete";
@@ -1115,7 +1140,7 @@ class AdminApp {
                         <div class="option-text-main">
                             <strong>${markers[optIdx] || optIdx + 1}.</strong> ${this.escapeHtml(opt.text_en)}
                         </div>
-                        <div class="option-text-de">${this.escapeHtml(opt.text_de)}</div>
+                        <div class="option-text-de" style="color: var(--text-muted); font-size: 0.85rem;">${this.escapeHtml(opt.text_de)}</div>
                         <div class="score-badge-list">
                             ${pills.join("")}
                         </div>
@@ -1140,7 +1165,7 @@ class AdminApp {
                     </div>
                     <div class="question-texts-box">
                         <div class="question-text-row">🇬🇧 <strong>${this.escapeHtml(q.text_en)}</strong></div>
-                        <div class="question-text-row de">🇩🇪 ${this.escapeHtml(q.text_de)}</div>
+                        <div class="question-text-row de" style="color: #93c5fd; font-size: 0.9rem;">🇩🇪 ${this.escapeHtml(q.text_de)}</div>
                     </div>
                     <div class="question-options-preview">
                         ${optionsHtml}
@@ -1180,6 +1205,8 @@ class AdminApp {
         let html = "";
         for (let i = 0; i < 4; i++) {
             const opt = optionsData[i] || { text_en: "", text_de: "", scores: {} };
+            const optEn = opt.text_en || "";
+            const optDe = opt.text_de || "";
             const scores = opt.scores || {};
 
             const scoreInputs = defaultHouses.map(h => {
@@ -1197,11 +1224,13 @@ class AdminApp {
                     <div class="option-form-header">
                         <span>Option ${markers[i]}</span>
                     </div>
-                    <div class="form-group" style="margin-bottom: 6px;">
-                        <input type="text" class="search-input opt-text-en" placeholder="Option ${markers[i]} (English)" value="${this.escapeHtml(opt.text_en)}" required>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 6px;">
-                        <input type="text" class="search-input opt-text-de" placeholder="Option ${markers[i]} (German)" value="${this.escapeHtml(opt.text_de)}" required>
+                    <div class="option-texts-grid">
+                        <div class="form-group" style="width: 100%;">
+                            <input type="text" class="search-input opt-text-en" placeholder="Option ${markers[i]} (English)..." value="${this.escapeHtml(optEn)}" required style="width: 100%;">
+                        </div>
+                        <div class="form-group" style="width: 100%;">
+                            <input type="text" class="search-input opt-text-de" placeholder="Option ${markers[i]} (German)..." value="${this.escapeHtml(optDe)}" required style="width: 100%;">
+                        </div>
                     </div>
                     <div class="score-inputs-grid">
                         ${scoreInputs}
@@ -1236,8 +1265,8 @@ class AdminApp {
 
         document.getElementById("edit-question-id").value = q.id;
         document.getElementById("question-modal-title").textContent = window.i18n.t("modal_edit_question_title") || "Edit Question";
-        document.getElementById("q-text-en").value = q.text_en;
-        document.getElementById("q-text-de").value = q.text_de;
+        document.getElementById("q-text-en").value = q.text_en || "";
+        document.getElementById("q-text-de").value = q.text_de || "";
         this.clearError("question-form-error");
 
         this.renderOptionFormCards(q.options || []);
@@ -1258,8 +1287,10 @@ class AdminApp {
         const options = [];
 
         for (const card of optionCards) {
-            const optEn = card.querySelector(".opt-text-en").value.trim();
-            const optDe = card.querySelector(".opt-text-de").value.trim();
+            const optEnInput = card.querySelector(".opt-text-en");
+            const optDeInput = card.querySelector(".opt-text-de");
+            const optEn = optEnInput ? optEnInput.value.trim() : "";
+            const optDe = optDeInput ? optDeInput.value.trim() : "";
 
             if (!optEn || !optDe) {
                 this.showError("question-form-error", window.i18n.t("err_question_validation"));
@@ -1319,25 +1350,33 @@ class AdminApp {
         }
     }
 
-    deleteQuestion(questionId) {
-        const msg = window.i18n.t("confirm_delete_question") || "Are you sure you want to delete this question?";
-        this.confirmDialog(msg, async () => {
-            try {
-                const res = await fetch(`/api/admin/questions/${questionId}`, {
-                    method: "DELETE",
-                    headers: this.getAuthHeaders()
-                });
-                if (res.ok) {
-                    this.showToast(window.i18n.t("msg_question_deleted") || "Question deleted successfully!", "success");
-                    await this.loadQuestions();
-                } else {
-                    const errData = await res.json();
-                    this.showToast(errData.detail || "Failed to delete question.", "error");
-                }
-            } catch (err) {
-                this.showToast("Connection error while deleting question.", "error");
+    async deleteQuestion(questionId) {
+        const isDe = window.i18n.getLang() === "de";
+        const confirmed = await this.confirmDialog({
+            icon: "🗑️",
+            title: isDe ? "Frage löschen" : "Delete Question",
+            message: window.i18n.t("confirm_delete_question") || (isDe ? "Möchtest du diese Frage wirklich löschen?" : "Are you sure you want to delete this question?"),
+            confirmText: isDe ? "Löschen" : "Delete",
+            isDanger: true
+        });
+
+        if (!confirmed) return;
+
+        try {
+            const res = await fetch(`/api/admin/questions/${questionId}`, {
+                method: "DELETE",
+                headers: this.getAuthHeaders()
+            });
+            if (res.ok) {
+                this.showToast(window.i18n.t("msg_question_deleted") || (isDe ? "Frage gelöscht!" : "Question deleted!"), "success");
+                await this.loadQuestions();
+            } else {
+                const errData = await res.json();
+                this.showToast(errData.detail || (isDe ? "Fehler beim Löschen." : "Failed to delete question."), "error");
             }
-        }, "danger");
+        } catch (err) {
+            this.showToast(isDe ? "Verbindungsfehler." : "Connection error while deleting question.", "error");
+        }
     }
 
     openEditPointsModal(participantId) {

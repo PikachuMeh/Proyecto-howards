@@ -1,7 +1,7 @@
 /* Admin Panel Styles */
 
 .admin-header {
-    background: rgba(10, 14, 26, 0.98);
+    background: #0a0e1a;
     border-bottom: 2px solid var(--gold-border);
     padding: 14px 24px;
     position: sticky;
@@ -9,9 +9,8 @@
     left: 0;
     right: 0;
     width: 100%;
-    z-index: 100;
-    backdrop-filter: blur(16px);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.75);
+    z-index: 2000;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.85);
 }
 
 .admin-header-content {
@@ -620,13 +619,16 @@ input:checked + .slider:before {
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.75);
+    background: rgba(0, 0, 0, 0.78);
     backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    padding: 16px;
+    padding: 20px;
+    padding-top: 80px;
+    box-sizing: border-box;
+    overflow-y: auto;
 }
 
 .modal-overlay.hidden {
@@ -894,10 +896,55 @@ input:checked + .slider:before {
 
 /* Question Editor Modal */
 .question-modal-card {
-    max-width: 680px;
-    max-height: 90vh;
+    max-width: 860px;
+    width: 95%;
+    max-height: 88vh;
     overflow-y: auto;
     scrollbar-width: thin;
+    padding: 28px 32px;
+}
+
+.question-editor-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    text-align: left;
+}
+
+.question-texts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    .question-texts-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.question-editor-form .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    text-align: left;
+}
+
+.question-editor-form .form-group label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--gold-primary);
+    text-align: left;
+}
+
+.question-editor-form textarea,
+.question-editor-form input.search-input {
+    width: 100%;
+    box-sizing: border-box;
+    display: block;
 }
 
 .options-form-list {
@@ -906,17 +953,20 @@ input:checked + .slider:before {
     gap: 14px;
     max-height: 48vh;
     overflow-y: auto;
-    padding-right: 4px;
+    padding-right: 6px;
+    width: 100%;
 }
 
 .option-form-card {
-    background: rgba(0, 0, 0, 0.35);
+    background: rgba(0, 0, 0, 0.4);
     border: 1px solid var(--border-subtle);
     border-radius: 10px;
-    padding: 12px;
+    padding: 14px 16px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .option-form-header {
@@ -925,20 +975,34 @@ input:checked + .slider:before {
     align-items: center;
     font-weight: 600;
     color: var(--gold-primary);
-    font-size: 0.9rem;
+    font-size: 0.95rem;
+}
+
+.option-texts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    .option-texts-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .score-inputs-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
+    gap: 10px;
+    width: 100%;
 }
 
 .score-input-item {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     font-weight: 600;
 }
 
@@ -951,13 +1015,14 @@ input:checked + .slider:before {
     background: rgba(0, 0, 0, 0.5);
     border: 1px solid var(--border-subtle);
     color: #fff;
-    padding: 6px 8px;
+    padding: 8px 10px;
     border-radius: 6px;
     font-weight: bold;
-    font-size: 0.95rem;
+    font-size: 1rem;
     text-align: center;
     width: 100%;
     outline: none;
+    box-sizing: border-box;
 }
 
 .score-input:focus {

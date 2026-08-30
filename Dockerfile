@@ -1,11 +1,14 @@
-﻿# Multi-stage / lightweight Python base image
-FROM python:3.12-slim
+# ==============================================================================
+# Hogwarts Sorting Hat - Production Docker Image
+# ==============================================================================
+FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    PORT=8000 \
     HOST=0.0.0.0 \
-    PORT=8000
+    ADMIN_PASSWORD=alohomora
 
 # Set working directory
 WORKDIR /app
@@ -15,22 +18,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Copy and install python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application source code
-COPY . .
+# Copy application files
+COPY app ./app
+COPY static ./static
+COPY templates ./templates
+COPY run.py .
 
-# Ensure data directory exists for SQLite database persistence
+# Create data directory for persistent SQLite storage
 RUN mkdir -p /app/data
 
 # Expose server port
 EXPOSE 8000
 
-# Health check
+# Healthcheck to ensure FastAPI app is responding
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/docs || exit 1
+    CMD curl -f http://localhost:8000/api/guest/questions || exit 1
 
-# Start the application via run.py (initializes/seeds DB and launches uvicorn)
+# Start the application
 CMD ["python", "run.py"]
